@@ -7,30 +7,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
-
 #include "gif_lib.h"
+#include "basic_structure.h"
+#include "openmp.h"
 
-/* Set this macro to 1 to enable debugging information */
-#define SOBELF_DEBUG 0
-
-/* Represent one pixel from the image */
-typedef struct pixel
-{
-    int r ; /* Red */
-    int g ; /* Green */
-    int b ; /* Blue */
-} pixel ;
-
-/* Represent one GIF image (animated or not */
-typedef struct animated_gif
-{
-    int n_images ; /* Number of images */
-    int * width ; /* Width of each image */
-    int * height ; /* Height of each image */
-    pixel ** p ; /* Pixels of each image */
-    GifFileType * g ; /* Internal representation.
-                         DO NOT MODIFY */
-} animated_gif ;
 
 /*
  * Load a GIF image from a file and return a
@@ -882,6 +862,26 @@ main( int argc, char ** argv )
     printf( "GIF loaded from file %s with %d image(s) in %lf s\n", 
             input_filename, image->n_images, duration ) ;
 
+#ifdef OPENMP
+    /* FILTER Timer start */
+    gettimeofday(&t1, NULL);
+    printf("\n\n\nTest openmp functions\n");
+    int i;
+    for (i=0; i<image->n_images; i++){
+        openmp_one_image_gray_filter_one_thread(i, image->width[i], image->height[i], image->p);
+        openmp_one_image_blur_filter_one_thread(i, image->width[i], image->height[i], 5, 20, image->p);
+        openmp_one_image_sobelf_filter_one_thread(i, image->width[i], image->height[i], image->p);
+    }
+    printf("Test openmp functions done\n\n\n");
+    /* FILTER Timer stop */
+    gettimeofday(&t2, NULL);
+
+    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+
+    printf( "SOBEL done in %lf s\n", duration ) ;
+#endif
+
+#ifdef CLASSIC
     /* FILTER Timer start */
     gettimeofday(&t1, NULL);
 
@@ -900,6 +900,7 @@ main( int argc, char ** argv )
     duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
     printf( "SOBEL done in %lf s\n", duration ) ;
+#endif
 
     /* EXPORT Timer start */
     gettimeofday(&t1, NULL);
