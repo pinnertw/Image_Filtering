@@ -192,17 +192,18 @@ void openmp_one_image_sobelf_filter_one_thread(int i, int width, int height, pix
                 sobel[CONV(j  ,k  ,width)].b = 0 ;
             }
         }
-
-        for(j=1; j<height-1; j++)
-        {
-            for(k=1; k<width-1; k++)
-            {
-                p[i][CONV(j  ,k  ,width)].r = sobel[CONV(j  ,k  ,width)].r ;
-                p[i][CONV(j  ,k  ,width)].g = sobel[CONV(j  ,k  ,width)].g ;
-                p[i][CONV(j  ,k  ,width)].b = sobel[CONV(j  ,k  ,width)].b ;
-            }
-        }
-
-        free (sobel) ;
     }
+        //printf("\n Fin de sobel processing \n");
+
+    for(j=1; j<height-1; j++)
+    {
+        for(k=1; k<width-1; k++)
+        {
+            p[i][CONV(j  ,k  ,width)].r = sobel[CONV(j  ,k  ,width)].r ;
+            p[i][CONV(j  ,k  ,width)].g = sobel[CONV(j  ,k  ,width)].g ;
+            p[i][CONV(j  ,k  ,width)].b = sobel[CONV(j  ,k  ,width)].b ;
+        }
+    }
+
+    free (sobel) ;
 }
