@@ -24,8 +24,6 @@ OBJ= $(OBJ_DIR)/dgif_lib.o \
 	$(OBJ_DIR)/openbsd-reallocarray.o \
 	$(OBJ_DIR)/quantize.o
 
-OBJ_OPENMP = $(OBJ_DIR)/openmp.o
-
 all: $(OBJ_DIR) sobelf sobelf_openmp
 
 $(OBJ_DIR):
@@ -34,11 +32,11 @@ $(OBJ_DIR):
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-sobelf:$(OBJ) $(OBJ_OPENMP)
+sobelf:$(OBJ)
 	$(CC) $(CFLAGS) -DCLASSIC -o $@ src/main.c $^ $(LDFLAGS)
 
-sobelf_openmp:$(OBJ) $(OBJ_OPENMP)
+sobelf_openmp:$(OBJ) 
 	$(CC) $(CFLAGS) -DOPENMP -fopenmp -o $@ src/main.c $^ $(LDFLAGS)
 
 clean:
-	rm -f sobelf $(OBJ) $(OBJ_OPENMP) sobelf_openmp
+	rm -f sobelf $(OBJ) sobelf_openmp
