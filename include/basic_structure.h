@@ -1,7 +1,7 @@
 #pragma once
 #include "gif_lib.h"
 /* Set this macro to 1 to enable debugging information */
-#define SOBELF_DEBUG 0
+#define SOBELF_DEBUG 1
 
 /* Represent one pixel from the image */
 typedef struct pixel
@@ -28,4 +28,3 @@ animated_gif* load_pixels(char * filename);
 int output_modified_read_gif(char * filename, GifFileType *g);
 
 int store_pixels(char * filename, animated_gif * image);
-

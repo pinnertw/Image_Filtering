@@ -34,10 +34,10 @@ $(OBJ_DIR):
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-sobelf:$(OBJ)
+sobelf:$(OBJ) 
 	$(CC) $(CFLAGS) -o $@ src/main.c $^ $(LDFLAGS)
 
-sobelf_openmp:$(OBJ) 
+sobelf_openmp:$(OBJ)
 	$(CC) $(CFLAGS) -fopenmp -o $@ src/main_openmp.c $^ $(LDFLAGS)
 
 clean:

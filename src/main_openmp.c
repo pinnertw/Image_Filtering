@@ -14,77 +14,6 @@
 #define CONV(l,c,nb_c) \
     (l)*(nb_c)+(c)
 
-void
-openmp_sobel_filter( animated_gif * image )
-{
-    int i, j, k ;
-    int width, height ;
-
-    int ** p ;
-
-    p = image->p ;
-
-#pragma omp parallel for private(i, j, k)
-    for ( i = 0 ; i < image->n_images ; i++ )
-    {
-        width = image->width[i] ;
-        height = image->height[i] ;
-
-        int * sobel ;
-
-        sobel = (int *)malloc(width * height * sizeof( int ) ) ;
-
-        for(j=1; j<height-1; j++)
-        {
-            for(k=1; k<width-1; k++)
-            {
-                int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
-                int pixel_blue_so, pixel_blue_s, pixel_blue_se;
-                int pixel_blue_o , pixel_blue  , pixel_blue_e ;
-
-                float deltaX_blue ;
-                float deltaY_blue ;
-                float val_blue;
-
-                pixel_blue_no = p[i][CONV(j-1,k-1,width)] ;
-                pixel_blue_n  = p[i][CONV(j-1,k  ,width)] ;
-                pixel_blue_ne = p[i][CONV(j-1,k+1,width)] ;
-                pixel_blue_so = p[i][CONV(j+1,k-1,width)] ;
-                pixel_blue_s  = p[i][CONV(j+1,k  ,width)] ;
-                pixel_blue_se = p[i][CONV(j+1,k+1,width)] ;
-                pixel_blue_o  = p[i][CONV(j  ,k-1,width)] ;
-                pixel_blue    = p[i][CONV(j  ,k  ,width)] ;
-                pixel_blue_e  = p[i][CONV(j  ,k+1,width)] ;
-
-                deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;             
-
-                deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
-
-                val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
-
-
-                if ( val_blue > 50 ) 
-                {
-                    sobel[CONV(j  ,k  ,width)] = 255 ;
-                } else
-                {
-                    sobel[CONV(j  ,k  ,width)] = 0 ;
-                }
-            }
-        }
-
-        for(j=1; j<height-1; j++)
-        {
-            for(k=1; k<width-1; k++)
-            {
-                p[i][CONV(j  ,k  ,width)] = sobel[CONV(j  ,k  ,width)] ;
-            }
-        }
-
-        free (sobel) ;
-    }
-}
-
 /*
  * Main entry point
  */
@@ -145,13 +74,14 @@ main( int argc, char ** argv )
     /* Get the pixels of all images */
     p = image->p ;
 
-    int nb_threads = omp_get_num_threads();
+    int nb_threads = omp_get_max_threads();
     int cut_part = image->n_images - image->n_images % nb_threads;
+//printf("\n %d %d %d \n", nb_threads, cut_part, image->n_images % nb_threads);
 
     /* Process all images */
 #pragma omp parallel
     {
-#pragma omp parallel for private(i, j, new, width, height, n_iter, k)
+#pragma omp for private(i, j, new, width, height, n_iter, k)
         for ( i = 0 ; i < cut_part ; i++ )
         {
             n_iter = 0 ;
@@ -244,12 +174,10 @@ main( int argc, char ** argv )
                 }
             }
             while ( threshold > 0 && !end ) ;
-
+            free (new) ;
 #if SOBELF_DEBUG
         printf( "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
-
-            free (new) ;
         }
     }
     for ( i = cut_part ; i < image->n_images ; i++ )
@@ -268,23 +196,23 @@ main( int argc, char ** argv )
         {
             end = 1 ;
             n_iter++ ;
-
-#pragma omp parallel 
+#pragma omp parallel default(none) shared(new, p, i, height, width) private(j, k)
             {
-#pragma omp parallel for private(j, k) collapse(2) schedule(static, 10)
+#pragma omp for private(j, k)// collapse(2) schedule(static, 10)
                 for(j=0; j<height-1; j++)
                 {
                     for(k=0; k<width-1; k++)
                     {
                         new[CONV(j,k,width)] = p[i][CONV(j,k,width)] ;
+
                     }
                 }
             }
 
             /* Apply blur on top part of image (10%) */
-#pragma omp parallel
+#pragma omp parallel default(none) shared(new, p, width, size, end1, i) private(j, k)
             {
-#pragma omp parallel for private(j, k) collapse(2) schedule(static, 10)
+#pragma omp for private(j, k)// collapse(2) schedule(static, 10)
                 for(j=size; j<end1; j++)
                 {
                     for(k=size; k<width-size; k++)
@@ -306,9 +234,9 @@ main( int argc, char ** argv )
             }
 
             /* Copy the middle part of the image */
-#pragma omp parallel
+#pragma omp parallel default(none) shared(i, p, new, width, end1, end2, size) private(j, k)
             {
-#pragma omp parallel for private(j, k) collapse(2) schedule(static, 10)
+#pragma omp for private(j, k)// collapse(2) schedule(static, 10)
                 for(j=end1; j<end2; j++)
                 {
                     for(k=size; k<width-size; k++)
@@ -319,9 +247,9 @@ main( int argc, char ** argv )
             }
 
             /* Apply blur on the bottom part of the image (10%) */
-#pragma omp parallel
+#pragma omp parallel default(none) shared(i, end2, height, size, width, p, new) private(j, k)
             {
-#pragma omp parallel for private(j, k) collapse(2) schedule(static, 10)
+#pragma omp for private(j, k)// collapse(2) schedule(static, 10)
                 for(j=end2; j<height-size; j++)
                 {
                     for(k=size; k<width-size; k++)
@@ -342,14 +270,13 @@ main( int argc, char ** argv )
                 }
             }
 
-#pragma omp parallel
+#pragma omp parallel default(none) shared(i, width, p, new, height, threshold, end)
             {
-#pragma omp parallel for private(j, k) collapse(2) schedule(static, 10)
+#pragma omp for private(j, k) reduction(*: end)
                 for(j=1; j<height-1; j++)
                 {
                     for(k=1; k<width-1; k++)
                     {
-
                         float diff_r ;
 
                         diff_r = (new[CONV(j  ,k  ,width)] - p[i][CONV(j  ,k  ,width)]) ;
@@ -360,17 +287,15 @@ main( int argc, char ** argv )
                         }
 
                         p[i][CONV(j  ,k  ,width)] = new[CONV(j  ,k  ,width)] ;
-                        printf("\n %s \n", omp_get_thread_num());
                     }
                 }
             }
         }
         while ( threshold > 0 && !end ) ;
-
+        free (new);
 #if SOBELF_DEBUG
         printf( "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
-        free (new) ;
     }
 
     gettimeofday(&t4, NULL);
@@ -380,9 +305,125 @@ main( int argc, char ** argv )
 
 // Apply Sobel filter
     gettimeofday(&t3, NULL);
-//#pragma omp parallel
     {
-        openmp_sobel_filter(image);
+#pragma omp parallel for private(i, j, k, width, height)
+        for ( i = 0 ; i < cut_part ; i++ )
+        {
+            width = image->width[i] ;
+            height = image->height[i] ;
+
+            int * sobel ;
+
+            sobel = (int *)malloc(width * height * sizeof( int ) ) ;
+
+            for(j=1; j<height-1; j++)
+            {
+                for(k=1; k<width-1; k++)
+                {
+                    int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
+                    int pixel_blue_so, pixel_blue_s, pixel_blue_se;
+                    int pixel_blue_o , pixel_blue  , pixel_blue_e ;
+
+                    float deltaX_blue ;
+                    float deltaY_blue ;
+                    float val_blue;
+
+                    pixel_blue_no = p[i][CONV(j-1,k-1,width)] ;
+                    pixel_blue_n  = p[i][CONV(j-1,k  ,width)] ;
+                    pixel_blue_ne = p[i][CONV(j-1,k+1,width)] ;
+                    pixel_blue_so = p[i][CONV(j+1,k-1,width)] ;
+                    pixel_blue_s  = p[i][CONV(j+1,k  ,width)] ;
+                    pixel_blue_se = p[i][CONV(j+1,k+1,width)] ;
+                    pixel_blue_o  = p[i][CONV(j  ,k-1,width)] ;
+                    pixel_blue    = p[i][CONV(j  ,k  ,width)] ;
+                    pixel_blue_e  = p[i][CONV(j  ,k+1,width)] ;
+
+                    deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;             
+
+                    deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
+
+                    val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
+
+
+                    if ( val_blue > 50 ) 
+                    {
+                        sobel[CONV(j  ,k  ,width)] = 255 ;
+                    } else
+                    {
+                        sobel[CONV(j  ,k  ,width)] = 0 ;
+                    }
+                }
+            }
+
+            for(j=1; j<height-1; j++)
+            {
+                for(k=1; k<width-1; k++)
+                {
+                    p[i][CONV(j  ,k  ,width)] = sobel[CONV(j  ,k  ,width)] ;
+                }
+            }
+
+            free (sobel) ;
+        }
+        for ( i = cut_part ; i < image->n_images ; i++ )
+        {
+            width = image->width[i] ;
+            height = image->height[i] ;
+
+            int * sobel ;
+
+            sobel = (int *)malloc(width * height * sizeof( int ) ) ;
+
+#pragma omp parallel for private(j, k)
+            for(j=1; j<height-1; j++)
+            {
+                for(k=1; k<width-1; k++)
+                {
+                    int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
+                    int pixel_blue_so, pixel_blue_s, pixel_blue_se;
+                    int pixel_blue_o , pixel_blue  , pixel_blue_e ;
+
+                    float deltaX_blue ;
+                    float deltaY_blue ;
+                    float val_blue;
+
+                    pixel_blue_no = p[i][CONV(j-1,k-1,width)] ;
+                    pixel_blue_n  = p[i][CONV(j-1,k  ,width)] ;
+                    pixel_blue_ne = p[i][CONV(j-1,k+1,width)] ;
+                    pixel_blue_so = p[i][CONV(j+1,k-1,width)] ;
+                    pixel_blue_s  = p[i][CONV(j+1,k  ,width)] ;
+                    pixel_blue_se = p[i][CONV(j+1,k+1,width)] ;
+                    pixel_blue_o  = p[i][CONV(j  ,k-1,width)] ;
+                    pixel_blue    = p[i][CONV(j  ,k  ,width)] ;
+                    pixel_blue_e  = p[i][CONV(j  ,k+1,width)] ;
+
+                    deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;             
+
+                    deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
+
+                    val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
+
+
+                    if ( val_blue > 50 ) 
+                    {
+                        sobel[CONV(j  ,k  ,width)] = 255 ;
+                    } else
+                    {
+                        sobel[CONV(j  ,k  ,width)] = 0 ;
+                    }
+                }
+            }
+#pragma omp parallel for private(j, k)
+            for(j=1; j<height-1; j++)
+            {
+                for(k=1; k<width-1; k++)
+                {
+                    p[i][CONV(j  ,k  ,width)] = sobel[CONV(j  ,k  ,width)] ;
+                }
+            }
+
+            free (sobel) ;
+        }
     }
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
