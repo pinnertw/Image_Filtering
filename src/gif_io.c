@@ -17,7 +17,7 @@ load_pixels( char * filename )
     int n_images ;
     int * width ;
     int * height ;
-    pixel ** p ;
+    int ** p ;
     int i ;
     animated_gif * image ;
 
@@ -94,7 +94,7 @@ load_pixels( char * filename )
 #endif
 
     /* Allocate the array of pixels to be returned */
-    p = (pixel **)malloc( n_images * sizeof( pixel * ) ) ;
+    p = (int **)malloc( n_images * sizeof( int * ) ) ;
     if ( p == NULL )
     {
         fprintf( stderr, "Unable to allocate array of %d images\n",
@@ -104,7 +104,7 @@ load_pixels( char * filename )
 
     for ( i = 0 ; i < n_images ; i++ ) 
     {
-        p[i] = (pixel *)malloc( width[i] * height[i] * sizeof( pixel ) ) ;
+        p[i] = (int *)malloc( width[i] * height[i] * sizeof( int ) ) ;
         if ( p[i] == NULL )
         {
         fprintf( stderr, "Unable to allocate %d-th array of %d pixels\n",
@@ -138,9 +138,7 @@ load_pixels( char * filename )
 
             c = g->SavedImages[i].RasterBits[j] ;
 
-            p[i][j].r = colmap->Colors[c].Red ;
-            p[i][j].g = colmap->Colors[c].Green ;
-            p[i][j].b = colmap->Colors[c].Blue ;
+            p[i][j] = (colmap->Colors[c].Red+colmap->Colors[c].Green+colmap->Colors[c].Blue)/3 ;
         }
     }
 
@@ -212,7 +210,7 @@ int
 store_pixels( char * filename, animated_gif * image )
 {
     int n_colors = 0 ;
-    pixel ** p ;
+    int ** p ;
     int i, j, k ;
     GifColorType * colormap ;
 
@@ -452,9 +450,9 @@ store_pixels( char * filename, animated_gif * image )
             int found = 0 ;
             for ( k = 0 ; k < n_colors ; k++ )
             {
-                if ( p[i][j].r == colormap[k].Red &&
-                        p[i][j].g == colormap[k].Green &&
-                        p[i][j].b == colormap[k].Blue )
+                if ( p[i][j] == colormap[k].Red &&
+                        p[i][j] == colormap[k].Green &&
+                        p[i][j] == colormap[k].Blue )
                 {
                     found = 1 ;
                 }
@@ -472,12 +470,12 @@ store_pixels( char * filename, animated_gif * image )
 
 #if SOBELF_DEBUG
                 printf( "[DEBUG] Found new %d color (%d,%d,%d)\n",
-                        n_colors, p[i][j].r, p[i][j].g, p[i][j].b ) ;
+                        n_colors, p[i][j], p[i][j], p[i][j] ) ;
 #endif
 
-                colormap[n_colors].Red = p[i][j].r ;
-                colormap[n_colors].Green = p[i][j].g ;
-                colormap[n_colors].Blue = p[i][j].b ;
+                colormap[n_colors].Red = p[i][j] ;
+                colormap[n_colors].Green = p[i][j] ;
+                colormap[n_colors].Blue = p[i][j] ;
                 n_colors++ ;
             }
         }
@@ -519,9 +517,9 @@ store_pixels( char * filename, animated_gif * image )
             int found_index = -1 ;
             for ( k = 0 ; k < n_colors ; k++ ) 
             {
-                if ( p[i][j].r == image->g->SColorMap->Colors[k].Red &&
-                        p[i][j].g == image->g->SColorMap->Colors[k].Green &&
-                        p[i][j].b == image->g->SColorMap->Colors[k].Blue )
+                if ( p[i][j] == image->g->SColorMap->Colors[k].Red &&
+                        p[i][j] == image->g->SColorMap->Colors[k].Green &&
+                        p[i][j] == image->g->SColorMap->Colors[k].Blue )
                 {
                     found_index = k ;
                 }

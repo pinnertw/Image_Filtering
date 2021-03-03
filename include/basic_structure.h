@@ -17,7 +17,8 @@ typedef struct animated_gif
     int n_images ; /* Number of images */
     int * width ; /* Width of each image */
     int * height ; /* Height of each image */
-    pixel ** p ; /* Pixels of each image */
+    //pixel ** p ; /* Pixels of each image */
+    int ** p; /* Pixels of each image */
     GifFileType * g ; /* Internal representation.
                          DO NOT MODIFY */
 } animated_gif ;
