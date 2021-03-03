@@ -249,7 +249,9 @@ main( int argc, char ** argv )
 
     /* Apply blur filter with convergence value */
     gettimeofday(&t3, NULL);
+
     apply_blur_filter( image, 5, 20 ) ;
+
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     fprintf(stderr,  "Blur filter done in %lf s\n", duration ) ;
@@ -257,7 +259,9 @@ main( int argc, char ** argv )
 
     /* Apply sobel filter on pixels */
     gettimeofday(&t3, NULL);
+
     apply_sobel_filter( image ) ;
+
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     fprintf(stderr,  "Sobel filter done in %lf s\n", duration ) ;
