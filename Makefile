@@ -13,6 +13,7 @@ SRC= dgif_lib.c \
 	gif_hash.c \
 	gifalloc.c \
 	openbsd-reallocarray.c \
+	gif_io.c \
 	quantize.c
 
 OBJ= $(OBJ_DIR)/dgif_lib.o \
@@ -22,6 +23,7 @@ OBJ= $(OBJ_DIR)/dgif_lib.o \
 	$(OBJ_DIR)/gif_hash.o \
 	$(OBJ_DIR)/gifalloc.o \
 	$(OBJ_DIR)/openbsd-reallocarray.o \
+	$(OBJ_DIR)/gif_io.o \
 	$(OBJ_DIR)/quantize.o
 
 all: $(OBJ_DIR) sobelf sobelf_openmp
@@ -33,10 +35,10 @@ $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 sobelf:$(OBJ)
-	$(CC) $(CFLAGS) -DCLASSIC -o $@ src/main.c $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ src/main.c $^ $(LDFLAGS)
 
 sobelf_openmp:$(OBJ) 
-	$(CC) $(CFLAGS) -DOPENMP -fopenmp -o $@ src/main.c $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -fopenmp -o $@ src/main_openmp.c $^ $(LDFLAGS)
 
 clean:
 	rm -f sobelf $(OBJ) sobelf_openmp

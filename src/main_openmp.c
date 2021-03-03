@@ -10,27 +10,19 @@
 #include "gif_lib.h"
 #include "basic_structure.h"
 
-void
-apply_gray_filter( animated_gif * image )
-{
-    int i, j ;
-    pixel ** p ;
-
-    p = image->p ;
-
-    for ( i = 0 ; i < image->n_images ; i++ )
-    {
-        for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ )
-        {
-            int moy ;
-
-            moy = (p[i][j].r + p[i][j].g + p[i][j].b)/3 ;
-            if ( moy < 0 ) moy = 0 ;
-            if ( moy > 255 ) moy = 255 ;
-
-            p[i][j].r = moy ;
-            p[i][j].g = moy ;
-            p[i][j].b = moy ;
+void openmp_gray_filter(animated_gif *image){
+    int i, j;
+    pixel** p = image->p;
+#pragma omp parallel for num_threads(4) private(i, j) collapse(2)
+    for(i=0; i<image->n_images; i++){
+        for(j=0; j<image->width[i]*image->height[i]; j++){
+            int moy;
+            moy = (p[i][j].r + p[i][j].g + p[i][j].b)/3;
+            if (moy < 0) moy=0;
+            if (moy > 255) moy=255;
+            p[i][j].r=moy;
+            p[i][j].g=moy;
+            p[i][j].b=moy;
         }
     }
 }
@@ -39,7 +31,7 @@ apply_gray_filter( animated_gif * image )
     (l)*(nb_c)+(c)
 
 void
-apply_blur_filter( animated_gif * image, int size, int threshold )
+openmp_blur_filter( animated_gif * image, int size, int threshold )
 {
     int i, j, k ;
     int width, height ;
@@ -54,6 +46,7 @@ apply_blur_filter( animated_gif * image, int size, int threshold )
 
 
     /* Process all images */
+#pragma omp parallel for num_threads(4) private(i, j)
     for ( i = 0 ; i < image->n_images ; i++ )
     {
         n_iter = 0 ;
@@ -71,15 +64,15 @@ apply_blur_filter( animated_gif * image, int size, int threshold )
             n_iter++ ;
 
 
-	for(j=0; j<height-1; j++)
-	{
-		for(k=0; k<width-1; k++)
-		{
-			new[CONV(j,k,width)].r = p[i][CONV(j,k,width)].r ;
-			new[CONV(j,k,width)].g = p[i][CONV(j,k,width)].g ;
-			new[CONV(j,k,width)].b = p[i][CONV(j,k,width)].b ;
-		}
-	}
+            for(j=0; j<height-1; j++)
+            {
+                for(k=0; k<width-1; k++)
+                {
+                    new[CONV(j,k,width)].r = p[i][CONV(j,k,width)].r ;
+                    new[CONV(j,k,width)].g = p[i][CONV(j,k,width)].g ;
+                    new[CONV(j,k,width)].b = p[i][CONV(j,k,width)].b ;
+                }
+            }
 
             /* Apply blur on top part of image (10%) */
             for(j=size; j<height/10-size; j++)
@@ -185,7 +178,7 @@ apply_blur_filter( animated_gif * image, int size, int threshold )
 }
 
 void
-apply_sobel_filter( animated_gif * image )
+openmp_sobel_filter( animated_gif * image )
 {
     int i, j, k ;
     int width, height ;
@@ -194,6 +187,7 @@ apply_sobel_filter( animated_gif * image )
 
     p = image->p ;
 
+#pragma omp parallel for num_threads(4) private(i, j, k)
     for ( i = 0 ; i < image->n_images ; i++ )
     {
         width = image->width[i] ;
@@ -299,32 +293,42 @@ main( int argc, char ** argv )
             input_filename, image->n_images, duration ) ;
 
     /* FILTER Timer start */
-    printf("\nTest classical functions \n");
     gettimeofday(&t1, NULL);
-
-    /* Convert the pixels into grayscale */
+    printf("\nTest openmp functions\n");
+    int i=0, j;
+    int width;
+    int height;
+    pixel * new;
+    pixel ** p = image->p;
+// Apply gray filter
     gettimeofday(&t3, NULL);
-    apply_gray_filter( image ) ;
+    openmp_gray_filter(image);
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     printf( "Gray filter done in %lf s\n", duration ) ;
 
-    /* Apply blur filter with convergence value */
+// Apply blur filter
     gettimeofday(&t3, NULL);
-    apply_blur_filter( image, 5, 20 ) ;
+#pragma omp parallel
+    {
+        openmp_blur_filter(image, 5, 20);
+    }
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     printf( "Blur filter done in %lf s\n", duration ) ;
 
-    /* Apply sobel filter on pixels */
+// Apply Sobel filter
     gettimeofday(&t3, NULL);
-    apply_sobel_filter( image ) ;
+#pragma omp parallel
+    {
+        openmp_sobel_filter(image);
+    }
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     printf( "Sobel filter done in %lf s\n", duration ) ;
 
+    printf("Test openmp functions done\n\n");
     /* FILTER Timer stop */
-    printf("Test classical functions done \n\n");
     gettimeofday(&t2, NULL);
 
     duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);

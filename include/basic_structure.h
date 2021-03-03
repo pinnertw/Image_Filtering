@@ -21,3 +21,10 @@ typedef struct animated_gif
     GifFileType * g ; /* Internal representation.
                          DO NOT MODIFY */
 } animated_gif ;
+
+animated_gif* load_pixels(char * filename);
+
+int output_modified_read_gif(char * filename, GifFileType *g);
+
+int store_pixels(char * filename, animated_gif * image);
+
