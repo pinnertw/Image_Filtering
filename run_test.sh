@@ -11,6 +11,6 @@ for i in $INPUT_DIR/*gif ; do
     DEST=$OUTPUT_DIR/`basename $i .gif`-sobel.gif
     #echo "Running test on $i -> $DEST"
 
-    ./sobelf $i $DEST
-    ./sobelf_openmp $i $DEST
+    ./sobelf $i $DEST 1
+    ./sobelf $i $DEST 0
 done

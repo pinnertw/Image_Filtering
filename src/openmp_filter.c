@@ -1,11 +1,6 @@
-/*
- * INF560
- *
- * Image Filtering Project
- */
-#include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include <math.h>
 #include "gif_lib.h"
 #include "basic_structure.h"
@@ -27,7 +22,7 @@ void openmp_blur_filter(animated_gif *image, int size, int threshold){
 
     int nb_threads = omp_get_max_threads();
     int cut_part = image->n_images - image->n_images % nb_threads;
-printf("\n %d %d %d \n", nb_threads, cut_part, image->n_images % nb_threads);
+    //printf("\n %d %d %d \n", nb_threads, cut_part, image->n_images % nb_threads);
 
     /* Process all images */
 #pragma omp parallel for private(i, j, new, width, height, n_iter, k, end)
@@ -122,7 +117,7 @@ printf("\n %d %d %d \n", nb_threads, cut_part, image->n_images % nb_threads);
         while ( threshold > 0 && !end ) ;
         free (new) ;
 #if SOBELF_DEBUG
-    printf( "BLUR: number of iterations for image %d\n", n_iter ) ;
+    fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
     }
 
@@ -224,7 +219,7 @@ printf("\n %d %d %d \n", nb_threads, cut_part, image->n_images % nb_threads);
         while ( threshold > 0 && !end ) ;
         free (new);
 #if SOBELF_DEBUG
-        printf( "BLUR: number of iterations for image %d\n", n_iter ) ;
+        fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
     }
 }
@@ -356,47 +351,14 @@ void openmp_sobel_filter(animated_gif * image)
         free (sobel) ;
     }
 }
-/*
- * Main entry point
- */
-int 
-main( int argc, char ** argv )
-{
-    char * input_filename ; 
-    char * output_filename ;
-    animated_gif * image ;
+
+void openmp_filter( animated_gif * image){
     struct timeval t1, t2, t3, t4;
-    double duration ;
-
-    /* Check command-line arguments */
-    if ( argc < 3 )
-    {
-        fprintf( stderr, "Usage: %s input.gif output.gif \n", argv[0] ) ;
-        return 1 ;
-    }
-
-    input_filename = argv[1] ;
-    output_filename = argv[2] ;
-
-    /* IMPORT Timer start */
-    gettimeofday(&t1, NULL);
-
-    /* Load file and store the pixels in array */
-    image = load_pixels( input_filename ) ;
-    if ( image == NULL ) { return 1 ; }
-
-    /* IMPORT Timer stop */
-    gettimeofday(&t2, NULL);
-
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
-
-    fprintf(stderr,  "GIF loaded from file %s with %d image(s) in %lf s\n", 
-            input_filename, image->n_images, duration ) ;
-    printf("%s ", input_filename);
+    double duration;
 
     /* FILTER Timer start */
     gettimeofday(&t1, NULL);
-    fprintf(stderr, "\nTest openmp functions\n");
+    fprintf(stderr, "\nUsing openmp functions\n");
     printf("%s ", "OpenMP");
 
 // Apply blur filter
@@ -419,7 +381,6 @@ main( int argc, char ** argv )
     fprintf(stderr,  "Sobel filter done in %lf s\n", duration ) ;
     printf("%lf ", duration);
 
-    fprintf(stderr, "Test openmp functions done\n\n");
     /* FILTER Timer stop */
     gettimeofday(&t2, NULL);
 
@@ -427,20 +388,4 @@ main( int argc, char ** argv )
 
     fprintf(stderr,  "SOBEL done in %lf s\n", duration ) ;
     printf("%lf ", duration);
-
-    /* EXPORT Timer start */
-    gettimeofday(&t1, NULL);
-
-    /* Store file from array of pixels to GIF file */
-    if ( !store_pixels( output_filename, image ) ) { return 1 ; }
-
-    /* EXPORT Timer stop */
-    gettimeofday(&t2, NULL);
-
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
-
-    fprintf(stderr,  "Export done in %lf s in file %s\n", duration, output_filename ) ;
-    printf("%lf \n", duration);
-
-    return 0 ;
 }
