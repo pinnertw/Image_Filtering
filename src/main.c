@@ -9,8 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "basic_structure.h"
-#include "openmp.h"
-#include "classic.h"
+#include "filters.h"
 /*
  * Main entry point
  */

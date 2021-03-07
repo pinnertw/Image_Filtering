@@ -2,6 +2,8 @@
 #include "gif_lib.h"
 /* Set this macro to 1 to enable debugging information */
 #define SOBELF_DEBUG 1
+#define CONV(l,c,nb_c) \
+    (l)*(nb_c)+(c)
 
 /* Represent one pixel from the image */
 typedef struct pixel

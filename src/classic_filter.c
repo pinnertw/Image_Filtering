@@ -7,129 +7,191 @@
     (l)*(nb_c)+(c)
 
 void
-classic_blur_filter( animated_gif * image, int size, int threshold )
-{
-    int i, j, k ;
-    int width, height ;
-    int end = 0 ;
-    int n_iter = 0 ;
+classic_blur_filter_per_image(int * p, int size, int threshold, int width, int height){
+    int end = 0;
+    int n_iter = 0;
+    int * new;
+    int j, k;
+    n_iter = 0 ;
 
-    int ** p ;
-    int * new ;
-
-    /* Get the pixels of all images */
-    p = image->p ;
+    /* Allocate array of new pixels */
+    new = (int *)malloc(width * height * sizeof( int ) ) ;
 
 
-    /* Process all images */
-    for ( i = 0 ; i < image->n_images ; i++ )
+    /* Perform at least one blur iteration */
+    do
     {
-        n_iter = 0 ;
-        width = image->width[i] ;
-        height = image->height[i] ;
-
-        /* Allocate array of new pixels */
-        new = (int *)malloc(width * height * sizeof( int ) ) ;
+        end = 1 ;
+        n_iter++ ;
 
 
-        /* Perform at least one blur iteration */
-        do
+        for(j=0; j<height-1; j++)
         {
-            end = 1 ;
-            n_iter++ ;
-
-
-	for(j=0; j<height-1; j++)
-	{
-		for(k=0; k<width-1; k++)
-		{
-			new[CONV(j,k,width)]  = p[i][CONV(j,k,width)]  ;
-		}
-	}
-
-            /* Apply blur on top part of image (10%) */
-            for(j=size; j<height/10-size; j++)
+            for(k=0; k<width-1; k++)
             {
-                for(k=size; k<width-size; k++)
-                {
-                    int stencil_j, stencil_k ;
-                    int t_r = 0 ;
-
-                    for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
-                    {
-                        for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
-                        {
-                            t_r += p[i][CONV(j+stencil_j,k+stencil_k,width)]  ;
-                        }
-                    }
-
-                    new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
-                }
+                new[CONV(j,k,width)]  = p[CONV(j,k,width)]  ;
             }
-
-            /* Copy the middle part of the image */
-            for(j=height/10-size; j<height*0.9+size; j++)
-            {
-                for(k=size; k<width-size; k++)
-                {
-                    new[CONV(j,k,width)]  = p[i][CONV(j,k,width)]  ; 
-                }
-            }
-
-            /* Apply blur on the bottom part of the image (10%) */
-            for(j=height*0.9+size; j<height-size; j++)
-            {
-                for(k=size; k<width-size; k++)
-                {
-                    int stencil_j, stencil_k ;
-                    int t_r = 0 ;
-
-                    for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
-                    {
-                        for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
-                        {
-                            t_r += p[i][CONV(j+stencil_j,k+stencil_k,width)]  ;
-                        }
-                    }
-
-                    new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
-                }
-            }
-
-            for(j=1; j<height-1; j++)
-            {
-                for(k=1; k<width-1; k++)
-                {
-
-                    float diff_r ;
-
-                    diff_r = (new[CONV(j  ,k  ,width)]  - p[i][CONV(j  ,k  ,width)] ) ;
-
-                    if ( diff_r > threshold || -diff_r > threshold 
-                       ) {
-                        end = 0 ;
-                    }
-
-                    p[i][CONV(j  ,k  ,width)]  = new[CONV(j  ,k  ,width)]  ;
-                }
-            }
-
         }
-        while ( threshold > 0 && !end ) ;
+
+        /* Apply blur on top part of image (10%) */
+        for(j=size; j<height/10-size; j++)
+        {
+            for(k=size; k<width-size; k++)
+            {
+                int stencil_j, stencil_k ;
+                int t_r = 0 ;
+
+                for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
+                {
+                    for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
+                    {
+                        t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
+                    }
+                }
+
+                new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
+            }
+        }
+
+        /* Copy the middle part of the image */
+        for(j=height/10-size; j<height*0.9+size; j++)
+        {
+            for(k=size; k<width-size; k++)
+            {
+                new[CONV(j,k,width)]  = p[CONV(j,k,width)]  ; 
+            }
+        }
+
+        /* Apply blur on the bottom part of the image (10%) */
+        for(j=height*0.9+size; j<height-size; j++)
+        {
+            for(k=size; k<width-size; k++)
+            {
+                int stencil_j, stencil_k ;
+                int t_r = 0 ;
+
+                for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
+                {
+                    for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
+                    {
+                        t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
+                    }
+                }
+
+                new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
+            }
+        }
+
+        for(j=1; j<height-1; j++)
+        {
+            for(k=1; k<width-1; k++)
+            {
+
+                float diff_r ;
+
+                diff_r = (new[CONV(j  ,k  ,width)]  - p[CONV(j  ,k  ,width)] ) ;
+
+                if ( diff_r > threshold || -diff_r > threshold 
+                   ) {
+                    end = 0 ;
+                }
+
+                p[CONV(j  ,k  ,width)]  = new[CONV(j  ,k  ,width)]  ;
+            }
+        }
+
+    }
+    while ( threshold > 0 && !end ) ;
 
 #if SOBELF_DEBUG
-	fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
+    fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
+    free (new) ;
+}
 
-        free (new) ;
+void
+classic_sobel_filter_per_image(int * p, int width, int height){
+    int j, k;
+    int * sobel;
+
+    sobel = (int *)malloc(width * height * sizeof( int ) ) ;
+
+    for(j=1; j<height-1; j++)
+    {
+        for(k=1; k<width-1; k++)
+        {
+            int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
+            int pixel_blue_so, pixel_blue_s, pixel_blue_se;
+            int pixel_blue_o , pixel_blue  , pixel_blue_e ;
+
+            float deltaX_blue ;
+            float deltaY_blue ;
+            float val_blue;
+
+            pixel_blue_no = p[CONV(j-1,k-1,width)]  ;
+            pixel_blue_n  = p[CONV(j-1,k  ,width)]  ;
+            pixel_blue_ne = p[CONV(j-1,k+1,width)]  ;
+            pixel_blue_so = p[CONV(j+1,k-1,width)]  ;
+            pixel_blue_s  = p[CONV(j+1,k  ,width)]  ;
+            pixel_blue_se = p[CONV(j+1,k+1,width)]  ;
+            pixel_blue_o  = p[CONV(j  ,k-1,width)]  ;
+            pixel_blue    = p[CONV(j  ,k  ,width)]  ;
+            pixel_blue_e  = p[CONV(j  ,k+1,width)]  ;
+
+            deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;             
+
+            deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
+
+            val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
+
+
+            if ( val_blue > 50 ) 
+            {
+                sobel[CONV(j  ,k  ,width)]  = 255 ;
+            } else
+            {
+                sobel[CONV(j  ,k  ,width)]  = 0 ;
+            }
+        }
     }
+
+    for(j=1; j<height-1; j++)
+    {
+        for(k=1; k<width-1; k++)
+        {
+            p[CONV(j  ,k  ,width)]  = sobel[CONV(j  ,k  ,width)]  ;
+        }
+    }
+    free (sobel) ;
 
 }
 
 void
+classic_blur_filter( animated_gif * image, int size, int threshold )
+{
+    int i;
+    int width, height ;
+
+    int ** p ;
+
+    /* Get the pixels of all images */
+    p = image->p ;
+
+    /* Process all images */
+    for ( i = 0 ; i < image->n_images ; i++ )
+    {
+        width = image->width[i] ;
+        height = image->height[i] ;
+        classic_blur_filter_per_image(p[i], size, threshold, width, height);
+    }
+
+}
+
+
+void
 classic_sobel_filter( animated_gif * image )
 {
-    int i, j, k ;
+    int i;
     int width, height ;
 
     int ** p ;
@@ -140,59 +202,7 @@ classic_sobel_filter( animated_gif * image )
     {
         width = image->width[i] ;
         height = image->height[i] ;
-
-        int * sobel ;
-
-        sobel = (int *)malloc(width * height * sizeof( int ) ) ;
-
-        for(j=1; j<height-1; j++)
-        {
-            for(k=1; k<width-1; k++)
-            {
-                int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
-                int pixel_blue_so, pixel_blue_s, pixel_blue_se;
-                int pixel_blue_o , pixel_blue  , pixel_blue_e ;
-
-                float deltaX_blue ;
-                float deltaY_blue ;
-                float val_blue;
-
-                pixel_blue_no = p[i][CONV(j-1,k-1,width)]  ;
-                pixel_blue_n  = p[i][CONV(j-1,k  ,width)]  ;
-                pixel_blue_ne = p[i][CONV(j-1,k+1,width)]  ;
-                pixel_blue_so = p[i][CONV(j+1,k-1,width)]  ;
-                pixel_blue_s  = p[i][CONV(j+1,k  ,width)]  ;
-                pixel_blue_se = p[i][CONV(j+1,k+1,width)]  ;
-                pixel_blue_o  = p[i][CONV(j  ,k-1,width)]  ;
-                pixel_blue    = p[i][CONV(j  ,k  ,width)]  ;
-                pixel_blue_e  = p[i][CONV(j  ,k+1,width)]  ;
-
-                deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;             
-
-                deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
-
-                val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
-
-
-                if ( val_blue > 50 ) 
-                {
-                    sobel[CONV(j  ,k  ,width)]  = 255 ;
-                } else
-                {
-                    sobel[CONV(j  ,k  ,width)]  = 0 ;
-                }
-            }
-        }
-
-        for(j=1; j<height-1; j++)
-        {
-            for(k=1; k<width-1; k++)
-            {
-                p[i][CONV(j  ,k  ,width)]  = sobel[CONV(j  ,k  ,width)]  ;
-            }
-        }
-
-        free (sobel) ;
+        classic_sobel_filter_per_image(p[i], width, height);
     }
 
 }
