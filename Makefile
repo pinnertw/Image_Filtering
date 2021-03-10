@@ -3,8 +3,11 @@ HEADER_DIR=include
 OBJ_DIR=obj
 
 CC=gcc
+GPUCC=nvcc
 CFLAGS=-O3 -I$(HEADER_DIR)
 LDFLAGS=-lm
+#LDGPUFLAGS=-lm -L/usr/local/cuda-11.0.3/targets/x86_64-linux/lib -lcudart -lstdc++
+LDGPUFLAGS=-lm -L/usr/local/cuda/lib64 -lcudart -lstdc++
 
 SRC= dgif_lib.c \
 	egif_lib.c \
@@ -33,6 +36,10 @@ OBJ_OPENMP = $(OBJ_DIR)/openmp_filter.o
 
 all: $(OBJ_DIR) sobelf
 
+obj/cuda_filter.o: src/cuda_filter.cu
+	$(GPUCC) -Iinclude -c -o $@ $^
+
+
 $(OBJ_DIR):
 	mkdir $(OBJ_DIR)
 
@@ -44,6 +51,9 @@ $(OBJ_OPENMP) : $(SRC_DIR)/$(SRC_OPENMP)
 
 sobelf:$(OBJ_OPENMP) $(OBJ)
 	$(CC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDFLAGS)
+
+sobelf_gpu:$(OBJ_OPENMP) $(OBJ) obj/cuda_filter.o
+	$(CC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
 
 clean:
 	rm -f sobelf $(OBJ) sobelf_openmp $(OBJ_OPENMP) $(OBJ_CLASSIC)

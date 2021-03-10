@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+
 #include "basic_structure.h"
 #include "filters.h"
 /*
@@ -60,6 +62,7 @@ main( int argc, char ** argv )
     //printf("\n\n %d, %ld \n\n", method, arg_method);
     if (method == 0) classic_filter(image);
     else if (method == 1) openmp_filter(image);
+    else if (method == 2) cuda_filter(image);
 
     /* EXPORT Timer start */
     gettimeofday(&t1, NULL);

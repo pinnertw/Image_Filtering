@@ -1,7 +1,7 @@
 #pragma once
 #include "gif_lib.h"
 /* Set this macro to 1 to enable debugging information */
-#define SOBELF_DEBUG 1
+#define SOBELF_DEBUG 0
 #define CONV(l,c,nb_c) \
     (l)*(nb_c)+(c)
 
