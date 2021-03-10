@@ -11,31 +11,21 @@
 
 __global__ void
 cuda_blur_filter_kernel(int *p, int * res, int size, int threshold, int width, int height, int* end){
-    int total_size = width * height;
-    int index;
-    int nb_threads;
-    index = blockIdx.x * blockDim.x + threadIdx.x;
-    nb_threads = blockDim.x * gridDim.x;
     int i, j, k;
+    j = threadIdx.y + blockIdx.y * blockDim.y;
+    k = threadIdx.x + blockIdx.x * blockDim.x;
+    i = CONV(j,k,width);
     int end1 = height/10 - size;
     int end2 = height*0.9 + size;
 
-    for (i = index; i < total_size; i+= nb_threads)
+    if (j >= 0 && j < height-1 && k >= 0 && k < width-1)
     {
-        j = i / width;
-        k = i % width;
-        if (j >= 0 && j < height-1 && k >= 0 && k < width-1)
-        {
         res[i] = p[i];
-        }
     }
     __syncthreads();
-    for (i = index; i < total_size; i+= nb_threads)
-    {
-        j = i / width;
-        k = i % width;
-        if ((j >= size && j < end1 && k >= size && k < width-size)||
-         (j >= end2 && j < height-size && k >= size && k <= width-size))
+    /* Apply blur on top/bottom part of image (10% & 90%) */
+    if (k >= size && k < width-size){
+        if ((j >= size && j < end1) || (j >= end2 && j < height-size))
         {
             int stencil_j, stencil_k ;
             int t_r = 0 ;
@@ -47,77 +37,61 @@ cuda_blur_filter_kernel(int *p, int * res, int size, int threshold, int width, i
                 }
             }
             res[i] = t_r / ( (2*size+1)*(2*size+1) ) ;
+            /* Test the end condition on the variables that we have changed */
+            float diff_r;
+            diff_r = (res[i] - p[i]);
+            if ( diff_r > threshold || -diff_r > threshold) {
+                *end = 0;
+            }
         }
-        else{
+        /* Copy the middle part of the image */
+        else if (j >= end1 && j < end2){
             res[i] = p[i];
         }
     }
     __syncthreads();
-    for(i=index; i < total_size; i+= nb_threads)
+    /* If the difference is large enough, we are going to reblur the image */
+    if (j >= 1 && j < height - 1 && k >= 1 && k < width - 1)
     {
-        j = i / width;
-        k = i % width;
-        if (j >= 1 && j < height - 1 && k >= 1 && k < width - 1)
-        {
-            float diff_r;
-            diff_r = (res[i] - p[i]) ;
-            if ( diff_r > threshold || -diff_r > threshold) {
-                *end = 0;
-            }
-            p[i] = res[i] ;
-        }
+        p[i] = res[i] ;
     }
     __syncthreads();
 }
 __global__
 void cuda_sobel_filter_kernel(int* p, int* res, int width, int height){
     int i, j, k;
-    int total_size = width * height;
-    int index;
-    int nb_threads;
-    index = blockIdx.x * blockDim.x + threadIdx.x;
-    nb_threads = blockDim.x * gridDim.x;
-    for (i = index; i < total_size; i+= nb_threads)
+    j = threadIdx.y + blockIdx.y * blockDim.y;
+    k = threadIdx.x + blockIdx.x * blockDim.x;
+    i = CONV(j,k,width);
+
+    if (j >= 1 && j < height - 1 && k >= 1 && k < width-1)
     {
-        j = i % height;
-        k = i % width;
-        if (j >= 1 && j < height - 1 && k >= 1 && k < width-1){
-            int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
-            int pixel_blue_so, pixel_blue_s, pixel_blue_se;
-            int pixel_blue_o , pixel_blue_e ;
+        int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
+        int pixel_blue_so, pixel_blue_s, pixel_blue_se;
+        int pixel_blue_o , pixel_blue_e ;
+        float deltaX_blue ;
+        float deltaY_blue ;
+        float val_blue;
+        pixel_blue_no = p[CONV(j-1,k-1,width)] ;
+        pixel_blue_n  = p[CONV(j-1,k  ,width)] ;
+        pixel_blue_ne = p[CONV(j-1,k+1,width)] ;
+        pixel_blue_so = p[CONV(j+1,k-1,width)] ;
+        pixel_blue_s  = p[CONV(j+1,k  ,width)] ;
+        pixel_blue_se = p[CONV(j+1,k+1,width)] ;
+        pixel_blue_o  = p[CONV(j  ,k-1,width)] ;
+        pixel_blue_e  = p[CONV(j  ,k+1,width)] ;
 
-            float deltaX_blue ;
-            float deltaY_blue ;
-            float val_blue;
-
-            pixel_blue_no = p[CONV(j-1,k-1,width)] ;
-            pixel_blue_n  = p[CONV(j-1,k  ,width)] ;
-            pixel_blue_ne = p[CONV(j-1,k+1,width)] ;
-            pixel_blue_so = p[CONV(j+1,k-1,width)] ;
-            pixel_blue_s  = p[CONV(j+1,k  ,width)] ;
-            pixel_blue_se = p[CONV(j+1,k+1,width)] ;
-            pixel_blue_o  = p[CONV(j  ,k-1,width)] ;
-            pixel_blue_e  = p[CONV(j  ,k+1,width)] ;
-
-            deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;             
-
-            deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
-
-            val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
-
-            if ( val_blue > 50 ) 
-            {
-                res[i] = 255 ;
-            } else
-            {
-                res[i] = 0 ;
-            }
-        }
-        else{
-            res[i] = p[i];
-        }
+        deltaX_blue = -pixel_blue_no + pixel_blue_ne - 2*pixel_blue_o + 2*pixel_blue_e - pixel_blue_so + pixel_blue_se;
+        deltaY_blue = pixel_blue_se + 2*pixel_blue_s + pixel_blue_so - pixel_blue_ne - 2*pixel_blue_n - pixel_blue_no;
+        val_blue = sqrt(deltaX_blue * deltaX_blue + deltaY_blue * deltaY_blue)/4;
+        if ( val_blue > 50 ) res[i] = 255 ;
+        else res[i] = 0 ;
     }
     __syncthreads();
+    if (j >= 1 && j < height - 1 && k >= 1 && k < width-1)
+    {
+        p[k] = 0;//res[i];
+    }
 }
 
 extern "C"
@@ -126,45 +100,62 @@ extern "C"
         cudaSetDevice(0);
         cudaDeviceProp deviceProp;
         cudaGetDeviceProperties(&deviceProp, 0);
+        cudaEvent_t start, stop;
 
         int total_size = width * height * sizeof(int);
         //printf("\n %d \n", total_size);
 
-        dim3 dimBlock(deviceProp.maxThreadsPerBlock);//, deviceProp.maxThreadsDim[1]);
-        dim3 dimGrid(total_size/deviceProp.maxThreadsPerBlock + 1);
+        dim3 dimBlock(
+                min(deviceProp.maxThreadsDim[0], width), 
+                min(deviceProp.maxThreadsDim[1], height)
+                );
+        dim3 dimGrid(
+                width / dimBlock.x + 1,
+                height / dimBlock.y + 1
+                );
+        printf("\nSize dimBlock : %d x %d \n", dimBlock.x, dimBlock.y);
+        printf("Size dimGrid : %d x %d \n", dimGrid.x, dimGrid.y);
+        printf("Threads needed : %d, Threads had : %d \n", width * height, dimBlock.x*dimBlock.y*dimGrid.x * dimGrid.y);
         /* Define device variables */
         int * d_p;
         int * d_res;
         int * d_end;
 
         /* Allocation of memory */
-        cudaMalloc( &d_p, total_size);
-        cudaMalloc( &d_res, total_size);
-        cudaMalloc( &d_end, sizeof(int));
+        checkCudaErrors(cudaEventCreate(&start));
+        checkCudaErrors(cudaMalloc( &d_p, total_size));
+        checkCudaErrors(cudaMalloc( &d_res, total_size));
+        checkCudaErrors(cudaMalloc( &d_end, sizeof(int)));
+        checkCudaErrors(cudaEventCreate(&stop));
 
         /* Copy array from CPU to device */
-        cudaMemcpy(d_p, p, total_size, cudaMemcpyHostToDevice);
+        checkCudaErrors(cudaMemcpy(d_p, p, total_size, cudaMemcpyHostToDevice));
 
         /* execute the kernel */
+        /*
         int num_iter = 0;
         int end;
         do{
             end = 1;
             num_iter++;
-            printf("Blur filtering... %d \n", end);
             cudaMemcpy(d_end, &end, sizeof(int), cudaMemcpyHostToDevice);
+            // TODO bad number (5) for the test case, but not the good output
             cuda_blur_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, size, threshold, width, height, d_end);
             cudaMemcpy(&end, d_end, sizeof(int), cudaMemcpyDeviceToHost);
-            printf("Blur filtering...Done! %d \n", end);
         }while (threshold > 0 && !end);
+        printf("\nBlur filtering...Done! %d \n", num_iter);
+        */
 
-        //cuda_sobel_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, width, height);
+        // TODO Once we finished blur recheck here
+        cuda_sobel_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, width, height);
 
         /* return the result from device to CPU */
-        cudaMemcpy(p, d_res, total_size, cudaMemcpyDeviceToHost);
-        cudaFree(d_p);
-        cudaFree(d_res);
-        cudaFree(d_end);
+        printf("Before transfer : %d %d %d\n", p[0], p[1], p[2]);
+        checkCudaErrors(cudaMemcpy(p, d_p, total_size, cudaMemcpyDeviceToHost));
+        printf(" After transfer : %d %d %d\n", p[0], p[1], p[2]);
+        checkCudaErrors(cudaFree(d_p));
+        checkCudaErrors(cudaFree(d_res));
+        checkCudaErrors(cudaFree(d_end));
     }
 
     void cuda_filter( animated_gif * image){

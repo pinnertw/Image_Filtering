@@ -229,7 +229,7 @@ void openmp_filter( animated_gif * image){
 // Apply blur filter
     gettimeofday(&t3, NULL);
 
-    openmp_blur_filter(image, 5, 20);
+    //openmp_blur_filter(image, 5, 20);
 
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
@@ -239,7 +239,7 @@ void openmp_filter( animated_gif * image){
 // Apply Sobel filter
     gettimeofday(&t3, NULL);
 
-    //openmp_sobel_filter(image);
+    openmp_sobel_filter(image);
 
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);

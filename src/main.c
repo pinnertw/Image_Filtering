@@ -67,6 +67,8 @@ main( int argc, char ** argv )
     /* EXPORT Timer start */
     gettimeofday(&t1, NULL);
 
+//TODO : variant export time ?
+
     /* Store file from array of pixels to GIF file */
     if ( !store_pixels( output_filename, image ) ) { return 1 ; }
 

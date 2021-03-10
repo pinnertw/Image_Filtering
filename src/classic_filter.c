@@ -40,7 +40,6 @@ classic_blur_filter_per_image(int * p, int size, int threshold, int width, int h
             {
                 int stencil_j, stencil_k ;
                 int t_r = 0 ;
-
                 for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
                 {
                     for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
@@ -48,7 +47,6 @@ classic_blur_filter_per_image(int * p, int size, int threshold, int width, int h
                         t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
                     }
                 }
-
                 new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
             }
         }
@@ -86,16 +84,13 @@ classic_blur_filter_per_image(int * p, int size, int threshold, int width, int h
         {
             for(k=1; k<width-1; k++)
             {
-
                 float diff_r ;
-
                 diff_r = (new[CONV(j  ,k  ,width)]  - p[CONV(j  ,k  ,width)] ) ;
 
                 if ( diff_r > threshold || -diff_r > threshold 
                    ) {
                     end = 0 ;
                 }
-
                 p[CONV(j  ,k  ,width)]  = new[CONV(j  ,k  ,width)]  ;
             }
         }
