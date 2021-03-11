@@ -57,8 +57,8 @@ $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 sobelf:$(OBJ_OPENMP) $(OBJ)
 	$(CC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDFLAGS)
 
-sobelf_gpu:$(OBJ_OPENMP) $(OBJ) obj/cuda_filter.o
-	$(CC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
+sobelf_gpu:$(OBJ_OPENMP) $(OBJ) obj/cuda_filter.o $(OBJ_MPI)
+	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
 
 sobelf_mpi: $(OBJ) $(OBJ_OPENMP) $(OBJ_MPI) obj/cuda_filter.o
 	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
