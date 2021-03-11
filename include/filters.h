@@ -24,3 +24,8 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
+
+// MPI filters
+int mpi_filter_rank_0(animated_gif * image);
+int mpi_filter_other_rank();
+int mpi_filter(int argc, char ** argv);
