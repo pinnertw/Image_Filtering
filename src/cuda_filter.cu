@@ -63,7 +63,6 @@ void cuda_sobel_filter_kernel(int* p, int* res, int width, int height){
     j = threadIdx.y + blockIdx.y * blockDim.y;
     k = threadIdx.x + blockIdx.x * blockDim.x;
     i = CONV(j,k,width);
-
     if (j >= 1 && j < height - 1 && k >= 1 && k < width-1)
     {
         int pixel_blue_no, pixel_blue_n, pixel_blue_ne;
@@ -87,11 +86,11 @@ void cuda_sobel_filter_kernel(int* p, int* res, int width, int height){
         if ( val_blue > 50 ) res[i] = 255 ;
         else res[i] = 0 ;
     }
-    __syncthreads();
-    if (j >= 1 && j < height - 1 && k >= 1 && k < width-1)
+    else if (j < height && k < height)
     {
-        p[k] = 0;//res[i];
+        res[i] = p[i];
     }
+    __syncthreads();
 }
 
 extern "C"
@@ -106,8 +105,8 @@ extern "C"
         //printf("\n %d \n", total_size);
 
         dim3 dimBlock(
-                min(deviceProp.maxThreadsDim[0], width), 
-                min(deviceProp.maxThreadsDim[1], height)
+                min(32, width), 
+                min(32, height)
                 );
         dim3 dimGrid(
                 width / dimBlock.x + 1,
@@ -132,27 +131,21 @@ extern "C"
         checkCudaErrors(cudaMemcpy(d_p, p, total_size, cudaMemcpyHostToDevice));
 
         /* execute the kernel */
-        /*
         int num_iter = 0;
         int end;
         do{
             end = 1;
             num_iter++;
             cudaMemcpy(d_end, &end, sizeof(int), cudaMemcpyHostToDevice);
-            // TODO bad number (5) for the test case, but not the good output
             cuda_blur_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, size, threshold, width, height, d_end);
             cudaMemcpy(&end, d_end, sizeof(int), cudaMemcpyDeviceToHost);
         }while (threshold > 0 && !end);
         printf("\nBlur filtering...Done! %d \n", num_iter);
-        */
 
-        // TODO Once we finished blur recheck here
         cuda_sobel_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, width, height);
 
         /* return the result from device to CPU */
-        printf("Before transfer : %d %d %d\n", p[0], p[1], p[2]);
-        checkCudaErrors(cudaMemcpy(p, d_p, total_size, cudaMemcpyDeviceToHost));
-        printf(" After transfer : %d %d %d\n", p[0], p[1], p[2]);
+        checkCudaErrors(cudaMemcpy(p, d_res, total_size, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaFree(d_p));
         checkCudaErrors(cudaFree(d_res));
         checkCudaErrors(cudaFree(d_end));
