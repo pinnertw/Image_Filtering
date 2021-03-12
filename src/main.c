@@ -16,14 +16,8 @@
  * Main entry point
  */
 
-int
-main( int argc, char ** argv)
-{
-    mpi_filter(argc, argv);
-}
-
 int 
-main2( int argc, char ** argv )
+main( int argc, char ** argv )
 {
     char * input_filename ; 
     char * output_filename ;

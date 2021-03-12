@@ -7,7 +7,6 @@ GPUCC=nvcc
 MPICC=mpicc
 CFLAGS=-O3 -I$(HEADER_DIR)
 LDFLAGS=-lm
-#LDGPUFLAGS=-lm -L/usr/local/cuda-11.0.3/targets/x86_64-linux/lib -lcudart -lstdc++
 LDGPUFLAGS=-lm -L/usr/local/cuda/lib64 -lcudart -lstdc++
 
 SRC= dgif_lib.c \
@@ -30,10 +29,10 @@ OBJ= $(OBJ_DIR)/dgif_lib.o \
 	$(OBJ_DIR)/openbsd-reallocarray.o \
 	$(OBJ_DIR)/gif_io.o \
 	$(OBJ_DIR)/quantize.o \
-	$(OBJ_DIR)/classic_filter.o
-
-SRC_OPENMP = openmp_filter.c
-OBJ_OPENMP = $(OBJ_DIR)/openmp_filter.o
+	$(OBJ_DIR)/classic_filter.o \
+	$(OBJ_DIR)/openmp_filter.o \
+	$(OBJ_DIR)/mpi_filter.o \
+	$(OBJ_DIR)/cuda_filter.o
 
 OBJ_MPI = $(OBJ_DIR)/mpi_filter.o
 
@@ -42,26 +41,26 @@ all: $(OBJ_DIR) sobelf
 $(OBJ_DIR):
 	mkdir $(OBJ_DIR)
 
-obj/cuda_filter.o: src/cuda_filter.cu
+$(OBJ_DIR)/cuda_filter.o: $(SRC_DIR)/cuda_filter.cu
 	$(GPUCC) -Iinclude -c -o $@ $^
 
-$(OBJ_OPENMP) : $(SRC_DIR)/$(SRC_OPENMP)
+$(OBJ_DIR)/openmp_filter.o : $(SRC_DIR)/openmp_filter.c
 	$(CC) $(CFLAGS) -fopenmp -c -o $@ $^ $(LDFLAGS)
 
-$(OBJ_MPI) : $(SRC_DIR)/mpi_filter.c
+$(OBJ_DIR)/mpi_filter.o : $(SRC_DIR)/mpi_filter.c
 	$(MPICC) $(CFLAGS) -fopenmp -c -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-sobelf:$(OBJ_OPENMP) $(OBJ)
+sobelf_serial:$(OBJ)
 	$(CC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDFLAGS)
 
-sobelf_gpu:$(OBJ_OPENMP) $(OBJ) obj/cuda_filter.o $(OBJ_MPI)
+sobelf:$(OBJ_OPENMP) $(OBJ) obj/cuda_filter.o $(OBJ_MPI)
 	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
 
 sobelf_mpi: $(OBJ) $(OBJ_OPENMP) $(OBJ_MPI) obj/cuda_filter.o
-	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
+	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main_mpi.c $^ $(LDGPUFLAGS)
 
 clean:
-	rm -f sobelf $(OBJ) sobelf_openmp $(OBJ_OPENMP) $(OBJ_CLASSIC) $(OBJ_MPI) obj/cuda_filter.o
+	rm -f sobelf sobelf_serial sobelf_mpi $(OBJ)
