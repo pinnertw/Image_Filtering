@@ -8,10 +8,6 @@
 #include "gif_lib.h"
 #include "basic_structure.h"
 
-// TODO rankx not local root
-// TODO rankx with local root
-// TODO FILTER distribution
-// TODO Re export
 void
 mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images, int world_size, int start_image_index)
 {
@@ -56,16 +52,138 @@ mpi_filter_other_rank_case1()
     MPI_Send(p_local, height*width, MPI_INT, 0, 1, MPI_COMM_WORLD);
 }
 
-// TODO process image with the groop image_comm
+// TODO local image comm.
 void
-mpi_filter_case2_local_root(int* p_local, int height, int width, MPI_Comm image_comm)
+mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height, int left, int right, MPI_Comm image_comm)
 {
 }
 
-// TODO process image with the groop image_comm
+// TODO local image comm.
 void
-mpi_filter_case2_local_process()
+mpi_sobel_filter_per_image(int* p, int width, int height, int left, int right, MPI_Comm image_comm)
 {
+}
+
+void
+mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image_comm)
+{
+    int i, j;
+    MPI_Status sta;
+    
+    int world_size;
+    MPI_Comm_size(image_comm, &world_size);
+
+    // For local root : define height/width, left/right for everyone
+    int* width_all, *width_cum_sum, *left_all, *right_all;
+    int width, left, right;
+    int rest = width_global % world_size;
+    width_all = (int*) malloc(world_size * sizeof(int));
+    width_cum_sum = (int*) malloc((world_size+1) * sizeof(int));
+    left_all = (int*) malloc(world_size * sizeof(int));
+    right_all = (int*) malloc(world_size * sizeof(int));
+    width_cum_sum[0] = 0;
+    for(i = 0; i < world_size; i++)
+    {
+        width_all[i] = width_global / world_size;
+        left_all[i] = 5;
+        right_all[i] = 5;
+        if (i < rest)
+        {
+            width_all[i]++;
+        }
+        width_cum_sum[i+1] = width_cum_sum[i] + width_all[i];
+    }
+    left_all[0] = 0;
+    right_all[world_size-1] = 0;
+
+    // Send these values
+    MPI_Bcast( &height, 1, MPI_INT, 0, image_comm);
+    MPI_Scatter(width_all, 1, MPI_INT, &width, 1,  MPI_INT, 0, image_comm);
+    MPI_Scatter(left_all, 1, MPI_INT, &left, 1,  MPI_INT, 0, image_comm);
+    MPI_Scatter(right_all, 1, MPI_INT, &right, 1,  MPI_INT, 0, image_comm);
+
+    // Send image to every nodes
+    // For the first n_images % world_size images, we get one more width
+    MPI_Datatype column_one_more;
+    MPI_Type_vector(height, width, width_global, MPI_INT, &column_one_more);
+    MPI_Type_commit(&column_one_more);
+
+    // For the last images, we get normal width
+    MPI_Datatype column;
+    MPI_Type_vector(height, width-1, width_global, MPI_INT, &column);
+    MPI_Type_commit(&column);
+    // Send !!
+    for (i=1; i<rest; i++){
+        MPI_Send(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm);
+    }
+    for (i=rest; i<world_size; i++){
+        MPI_Send(p+width_cum_sum[i], 1, column, i, 2, image_comm);
+    }
+
+    int* p_local;
+    p_local = (int*) malloc(height * (left+width+right) * sizeof(int));
+    for (i=0; i<width; i++){
+        for (j=0; j<height; j++){
+            p_local[CONV(j,i,width)] = p[CONV(j,i,width_global)];
+        }
+    }
+
+    // Processing
+    //classic_blur_filter_per_image(p_local, 5, 20, width, height);
+    mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm);
+    mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm);
+    //classic_sobel_filter_per_image(p_local, width, height);
+
+    // Get image processed from nodes
+    for (i=1; i<rest; i++){
+        MPI_Recv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, &sta);
+    }
+    for (i=rest; i<world_size; i++){
+        MPI_Recv(p+width_cum_sum[i], 1, column, i, 2, image_comm, &sta);
+    }
+    for (i=0; i<width; i++){
+        for (j=0; j<height; j++){
+            p[CONV(j,i,width_global)] = p_local[CONV(j,i,width)];
+        }
+    }
+
+    // Finalize
+    MPI_Type_free(&column_one_more);
+    MPI_Type_free(&column);
+    printf(" Root height : %d, width : %d, left : %d, right : %d ", height, width, left, right);
+}
+
+
+void
+mpi_filter_case2_local_process(MPI_Comm image_comm)
+{
+    MPI_Status sta;
+    
+    // Get height, width, left/right
+    int height, width, left, right;
+    MPI_Bcast( &height, 1, MPI_INT, 0, image_comm);
+    MPI_Scatter(NULL, 1, MPI_INT, &width, 1,  MPI_INT, 0, image_comm);
+    MPI_Scatter(NULL, 1, MPI_INT, &left, 1,  MPI_INT, 0, image_comm);
+    MPI_Scatter(NULL, 1, MPI_INT, &right, 1,  MPI_INT, 0, image_comm);
+
+    int* p_local;
+    p_local = (int*) malloc(height * (left+width+right) * sizeof(int));
+    // Receive message
+    MPI_Datatype column;
+    MPI_Type_vector(height, width, left+width+right, MPI_INT, &column);
+    MPI_Type_commit(&column);
+    MPI_Recv(p_local+left, 1, column, 0, 2, image_comm, &sta);
+
+    // Processing
+    mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm);
+    mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm);
+
+    // Send matrix back
+    MPI_Send(p_local+left, 1, column, 0, 2, image_comm);
+
+    // Finalize
+    MPI_Type_free(&column);
+    printf("Local height : %d, width : %d, left : %d, right : %d ", height, width, left, right);
 }
 
 void
@@ -101,7 +219,7 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     int* p_local;
     p_local = p[0 + start_image_index];
 
-    mpi_filter_case2_local_root(p_local, height, width, image_comm);
+    mpi_filter_case2_local_root(p_local, width, height, image_comm);
 
     // Get image processed from roots
     for (i=1; i < n_images; i++){
@@ -141,13 +259,13 @@ mpi_filter_other_rank_case2(int world_rank)
         p_local = (int*) malloc(height * width * sizeof(int));
         MPI_Recv(p_local, width * height, MPI_INT, 0, 2, roots, &sta);
 
-        mpi_filter_case2_local_root(p_local, height, width, image_comm);
+        mpi_filter_case2_local_root(p_local, width, height, image_comm);
 
         MPI_Send(p_local, width * height, MPI_INT, 0, 2, roots);
     }
     else
     {
-        mpi_filter_case2_local_process();
+        mpi_filter_case2_local_process(image_comm);
     }
     // Get image processed from roots
     printf("Group %d rank %d !\n", world_rank % n_images, local_rank);
