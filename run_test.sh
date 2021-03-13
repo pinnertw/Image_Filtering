@@ -2,10 +2,9 @@
 
 make
 
-INPUT_DIR=images/original
-OUTPUT_DIR=images/processed
+INPUT_DIR=images/test
+OUTPUT_DIR=images/test_processed
 mkdir $OUTPUT_DIR 2>/dev/null
-export OMP_NUM_THREADS=6
 
 for i in $INPUT_DIR/*gif ; do
     DEST=$OUTPUT_DIR/`basename $i .gif`-sobel.gif

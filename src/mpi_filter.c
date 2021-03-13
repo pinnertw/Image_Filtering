@@ -11,7 +11,8 @@ void
 mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images, int world_size, int start_image_index, int method)
 {
     int i, j;
-    MPI_Status sta;
+    MPI_Request req[2*world_size];
+    MPI_Status sta[2*world_size];
 
     // We first deal with each image with 1 process
     int height, width;
@@ -20,7 +21,7 @@ mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images,
     // Send image to every nodes
     for (i=1; i<world_size; i++){
         j = i + start_image_index;
-        MPI_Send(p[j], width_all[j] * height_all[j], MPI_INT, i, 1, MPI_COMM_WORLD);
+        MPI_Isend(p[j], width_all[j] * height_all[j], MPI_INT, i, 1, MPI_COMM_WORLD, req+i-1);
     }
     int* p_local;
     p_local = p[0 + start_image_index];
@@ -52,8 +53,9 @@ mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images,
     // Get image processed from nodes
     for (i=1; i<world_size; i++){
         j = i + start_image_index;
-        MPI_Recv(p[j], width_all[j] * height_all[j], MPI_INT, i, 1, MPI_COMM_WORLD, &sta);
+        MPI_Irecv(p[j], width_all[j] * height_all[j], MPI_INT, i, 1, MPI_COMM_WORLD, req+i+world_size - 2);
     }
+    MPI_Waitall(2*(world_size-1), req, sta);
 }
 
 void
@@ -207,10 +209,12 @@ void
 mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image_comm, int method)
 {
     int i, j;
-    MPI_Status sta;
     
     int world_size;
     MPI_Comm_size(image_comm, &world_size);
+
+    MPI_Request req[2*world_size];
+    MPI_Status sta[2*world_size];
 
     // For local root : define height/width, left/right for everyone
     int* width_all, *width_cum_sum, *left_all, *right_all;
@@ -261,18 +265,18 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     if (rest == 0)
     {
         for (i=1; i<world_size; i++){
-            MPI_Send(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm);
+            MPI_Isend(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, req+i-1);
         }
     }
     else
     {
         for (i=1; i<rest; i++){
-            MPI_Send(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm);
+            MPI_Isend(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, req+i-1);
         }
         for (i=rest; i<world_size; i++){
             if(rest != 0)
             {
-            MPI_Send(p+width_cum_sum[i], 1, column, i, 2, image_comm);
+            MPI_Isend(p+width_cum_sum[i], 1, column, i, 2, image_comm, req+i-1);
             }
         }
     }
@@ -297,16 +301,16 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     if (rest == 0)
     {
         for (i=1; i<world_size; i++){
-            MPI_Recv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, &sta);
+            MPI_Irecv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, req+i+world_size-2);
         }
     }
     else
     {
         for (i=1; i<rest; i++){
-            MPI_Recv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, &sta);
+            MPI_Irecv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, req+i+world_size-2);
         }
         for (i=rest; i<world_size; i++){
-            MPI_Recv(p+width_cum_sum[i], 1, column, i, 2, image_comm, &sta);
+            MPI_Irecv(p+width_cum_sum[i], 1, column, i, 2, image_comm, req+i+world_size-2);
         }
     }
     for (i=left; i<width+left; i++){
@@ -315,6 +319,7 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
         }
     }
 
+    MPI_Waitall(2*(world_size-1), req, sta);
     // Finalize
     MPI_Type_free(&column_one_more);
     MPI_Type_free(&column);
@@ -356,10 +361,11 @@ void
 mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images, int start_image_index, int method)
 {
     int i, j;
-    MPI_Status sta;
+    n_images -= start_image_index;
+    MPI_Request req[2*n_images];
+    MPI_Status sta[2*n_images];
 
     // Send n_images to determine their group
-    n_images -= start_image_index;
     MPI_Bcast( &n_images, 1, MPI_INT, 0, MPI_COMM_WORLD);
     // Split comm group
     MPI_Comm image_comm; // local image processing group
@@ -384,7 +390,7 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     // Send image to every roots
     for (i=1; i < n_images; i++){
         j = i + start_image_index;
-        MPI_Send(p[j], width_all[j] * height_all[j], MPI_INT, i, 2, roots);
+        MPI_Isend(p[j], width_all[j] * height_all[j], MPI_INT, i, 2, roots, req+i-1);
     }
     int* p_local;
     p_local = p[0 + start_image_index];
@@ -397,13 +403,13 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     // Get image processed from roots
     for (i=1; i < n_images; i++){
         j = i + start_image_index;
-        MPI_Recv(p[j], width_all[j] * height_all[j], MPI_INT, i, 2, roots, &sta);
-    }
+        MPI_Irecv(p[j], width_all[j] * height_all[j], MPI_INT, i, 2, roots, req+i+n_images-2);    }
 
 #if MPI_DEBUG
     fprintf(stderr, "All images received, end processing\n");
     fprintf(stderr, "Group %d rank %d !\n", 0, local_rank);
 #endif
+    MPI_Waitall(2*(n_images-1), req, sta);
 }
 
 
