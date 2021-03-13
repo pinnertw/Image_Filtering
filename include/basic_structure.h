@@ -1,8 +1,12 @@
 #pragma once
 #include "gif_lib.h"
 /* Set this macro to 1 to enable debugging information */
+
+// Time flag
 #define time_eval 1
-#define time_eval_filters 0
+#define time_eval_filters 0 // Calculate time per filter
+
+// Debugs flag
 #define SOBELF_DEBUG 0
 #define MPI_DEBUG 0
 #define CUDA_DEBUG 0

@@ -3,14 +3,12 @@
 #include <math.h>
 #include <sys/time.h>
 #include <mpi.h>
-#include <omp.h> 
 
 #include "gif_lib.h"
 #include "basic_structure.h"
-#define MPI_DEBUG 0
 
 void
-mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images, int world_size, int start_image_index)
+mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images, int world_size, int start_image_index, int method)
 {
     int i, j;
     MPI_Status sta;
@@ -26,8 +24,30 @@ mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images,
     }
     int* p_local;
     p_local = p[0 + start_image_index];
-    classic_blur_filter_per_image(p_local, 5, 20, width, height);
-    classic_sobel_filter_per_image(p_local, width, height);
+
+    if (method == 0)
+    {
+#if MPI_DEBUG
+        printf("Using classic functions\n");
+#endif
+        classic_blur_filter_per_image(p_local, 5, 20, width, height);
+        classic_sobel_filter_per_image(p_local, width, height);
+    }
+    else if (method == 1)
+    {
+#if MPI_DEBUG
+        printf("Using openmp functions\n");
+#endif
+        openmp_blur_filter_per_image(p_local, 5, 20, width, height);
+        openmp_sobel_filter_per_image(p_local, width, height);
+    }
+    else if (method == 2)
+    {
+#if MPI_DEBUG
+        printf("Using cuda functions\n");
+#endif
+        cuda_filter_per_image(p_local, 5, 20, width, height);
+    }
 
     // Get image processed from nodes
     for (i=1; i<world_size; i++){
@@ -37,7 +57,7 @@ mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images,
 }
 
 void
-mpi_filter_other_rank_case1()
+mpi_filter_other_rank_case1(int method)
 {
     MPI_Status sta;
     int height, width;
@@ -47,8 +67,29 @@ mpi_filter_other_rank_case1()
     p_local = (int*) malloc(height * width * sizeof(int));
     MPI_Recv(p_local, height*width, MPI_INT, 0, 1, MPI_COMM_WORLD, &sta);
     // Processing
-    classic_blur_filter_per_image(p_local, 5, 20, width, height);
-    classic_sobel_filter_per_image(p_local, width, height);
+    if (method == 0)
+    {
+#if MPI_DEBUG
+        printf("Using classic functions\n");
+#endif
+        classic_blur_filter_per_image(p_local, 5, 20, width, height);
+        classic_sobel_filter_per_image(p_local, width, height);
+    }
+    else if (method == 1)
+    {
+#if MPI_DEBUG
+        printf("Using openmp functions\n");
+#endif
+        openmp_blur_filter_per_image(p_local, 5, 20, width, height);
+        openmp_sobel_filter_per_image(p_local, width, height);
+    }
+    else if (method == 2)
+    {
+#if MPI_DEBUG
+        printf("Using cuda functions\n");
+#endif
+        cuda_filter_per_image(p_local, 5, 20, width, height);
+    }
     // Send back the image.
     MPI_Send(p_local, height*width, MPI_INT, 0, 1, MPI_COMM_WORLD);
 }
@@ -86,17 +127,17 @@ mpi_update_image(int* p, int width, int height, int left, int right, int size_ex
 }
 
 void
-mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height, int left, int right, MPI_Comm image_comm)
+mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height, int left, int right, MPI_Comm image_comm, int method)
 {
     int rank;
     MPI_Comm_rank(image_comm, &rank);
     int end = 0;
     int n_iter = 0;
-    int * new;
     int j, k;
 
     /* Allocate array of new pixels */
     int width_total = left+width+right;
+    int * new;
     new = (int *)malloc(width_total*height*sizeof( int )) ;
 
     /* Perform at least one blur iteration */
@@ -104,7 +145,25 @@ mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height
     {
         mpi_update_image(p, width, height, left, right, size, image_comm, rank);
         n_iter++ ;
-        end = classic_blur_in_while(p, new, size, threshold, width_total, height);
+
+        if (method == 0)
+        {
+#if MPI_DEBUG
+            printf("Using classic functions\n");
+#endif
+            end = classic_blur_in_while(p, new, size, threshold, width_total, height);
+        }
+        else if (method == 1)
+        {
+#if MPI_DEBUG
+            printf("Using openmp functions for blur, %d th\n", n_iter);
+#endif
+            end = openmp_blur_in_while(p, new, size, threshold, width_total, height);
+        }
+        else if (method == 2)
+        {
+            end = cuda_blur_in_while(p, size, threshold, width_total, height);
+        }
         MPI_Allreduce(&end, &end, 1, MPI_INT, MPI_PROD, image_comm);
     }
     while ( threshold > 0 && !end ) ;
@@ -112,20 +171,40 @@ mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height
 #if MPI_DEBUG
     fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
-    free (new) ;
+    free (new);
 }
 
 void
-mpi_sobel_filter_per_image(int* p, int width, int height, int left, int right, MPI_Comm image_comm)
+mpi_sobel_filter_per_image(int* p, int width, int height, int left, int right, MPI_Comm image_comm, int method)
 {
     int rank;
     MPI_Comm_rank(image_comm, &rank);
-    mpi_update_image(p, width, height, left, right, 1, image_comm, rank);
-    classic_sobel_filter_per_image(p, left+width+right, height);
+    //mpi_update_image(p, width, height, left, right, 1, image_comm, rank);
+    if (method == 0)
+    {
+#if MPI_DEBUG
+        printf("Using classic functions\n");
+#endif
+        classic_sobel_filter_per_image(p, left+width+right, height);
+    }
+    else if (method == 1)
+    {
+#if MPI_DEBUG
+        printf("Using openmp functions\n");
+#endif
+        openmp_sobel_filter_per_image(p, left+width+right, height);
+    }
+    else if (method == 2)
+    {
+#if MPI_DEBUG
+        printf("Using cuda functions\n");
+#endif
+        cuda_sobel_filter_per_image(p, left+width+right, height);
+    }
 }
 
 void
-mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image_comm)
+mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image_comm, int method)
 {
     int i, j;
     MPI_Status sta;
@@ -211,8 +290,8 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     fprintf(stderr, "MPI_local image starts processing\n") ;
 #endif
     // Processing
-    mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm);
-    mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm);
+    mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm, method);
+    mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm, method);
 
     // Get image processed from nodes
     if (rest == 0)
@@ -243,7 +322,7 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
 
 
 void
-mpi_filter_case2_local_process(MPI_Comm image_comm)
+mpi_filter_case2_local_process(MPI_Comm image_comm, int method)
 {
     MPI_Status sta;
     
@@ -263,8 +342,8 @@ mpi_filter_case2_local_process(MPI_Comm image_comm)
     MPI_Recv(p_local+left, 1, column, 0, 2, image_comm, &sta);
 
     // Processing
-    mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm);
-    mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm);
+    mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm, method);
+    mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm, method);
 
     // Send matrix back
     MPI_Send(p_local+left, 1, column, 0, 2, image_comm);
@@ -274,7 +353,7 @@ mpi_filter_case2_local_process(MPI_Comm image_comm)
 }
 
 void
-mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images, int start_image_index)
+mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images, int start_image_index, int method)
 {
     int i, j;
     MPI_Status sta;
@@ -313,7 +392,7 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
 #if MPI_DEBUG
     fprintf(stderr, "All images sent, start processing\n");
 #endif
-    mpi_filter_case2_local_root(p_local, width, height, image_comm);
+    mpi_filter_case2_local_root(p_local, width, height, image_comm, method);
 
     // Get image processed from roots
     for (i=1; i < n_images; i++){
@@ -329,7 +408,7 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
 
 
 void
-mpi_filter_other_rank_case2(int world_rank)
+mpi_filter_other_rank_case2(int world_rank, int method)
 {
     MPI_Status sta;
 
@@ -356,13 +435,13 @@ mpi_filter_other_rank_case2(int world_rank)
         p_local = (int*) malloc(height * width * sizeof(int));
         MPI_Recv(p_local, width * height, MPI_INT, 0, 2, roots, &sta);
 
-        mpi_filter_case2_local_root(p_local, width, height, image_comm);
+        mpi_filter_case2_local_root(p_local, width, height, image_comm, method);
 
         MPI_Send(p_local, width * height, MPI_INT, 0, 2, roots);
     }
     else
     {
-        mpi_filter_case2_local_process(image_comm);
+        mpi_filter_case2_local_process(image_comm, method);
     }
     // Get image processed from roots
 #if MPI_DEBUG
@@ -371,7 +450,7 @@ mpi_filter_other_rank_case2(int world_rank)
 }
 
 
-int mpi_filter_rank_0(animated_gif * image)
+int mpi_filter_rank_0(animated_gif * image, int method)
 {
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -386,7 +465,7 @@ int mpi_filter_rank_0(animated_gif * image)
     dealing_case = 1;
     for (start_image_index = 0; start_image_index < n_images - world_size; start_image_index += world_size){
         MPI_Bcast( &dealing_case, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        mpi_filter_rank_0_case1(p, width_all, height_all, n_images, world_size, start_image_index);
+        mpi_filter_rank_0_case1(p, width_all, height_all, n_images, world_size, start_image_index, method);
     }
 
     /* ############## Second case : need ghost shell ############### */
@@ -394,7 +473,7 @@ int mpi_filter_rank_0(animated_gif * image)
     if (start_image_index < n_images)
     {
         MPI_Bcast( &dealing_case, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        mpi_filter_rank_0_case2(p, width_all, height_all, n_images, start_image_index);
+        mpi_filter_rank_0_case2(p, width_all, height_all, n_images, start_image_index, method);
     }
     /* ############## END ############### */
     dealing_case = 0;
@@ -404,7 +483,7 @@ int mpi_filter_rank_0(animated_gif * image)
 #endif
 }
 
-int mpi_filter_other_rank(world_rank)
+int mpi_filter_other_rank(int world_rank, int method)
 {
     int i;
     int dealing_case = 1;
@@ -416,12 +495,12 @@ int mpi_filter_other_rank(world_rank)
         // We first deal with each image with 1 process
         if (dealing_case == 1)
         {
-            mpi_filter_other_rank_case1();
+            mpi_filter_other_rank_case1(method);
         }
         /* ############## Second case : need ghost shell ############### */
         if (dealing_case == 2)
         {
-            mpi_filter_other_rank_case2(world_rank);
+            mpi_filter_other_rank_case2(world_rank, method);
         }
     }
 #if MPI_DEBUG
@@ -429,7 +508,7 @@ int mpi_filter_other_rank(world_rank)
 #endif
 }
 
-int mpi_filter(int argc, char ** argv)
+int mpi_filter(int argc, char ** argv, int method)
 {
     int world_rank, world_size;
 
@@ -445,11 +524,7 @@ int mpi_filter(int argc, char ** argv)
         char * input_filename;
         char * output_filename;
         animated_gif* image;
-        if (argc < 3)
-        {
-            fprintf(stderr, "Usage: %s input.gif output.gif \n", argv[0]);
-            return 1;
-        }
+
         input_filename = argv[1];
         output_filename = argv[2];
 
@@ -475,12 +550,14 @@ int mpi_filter(int argc, char ** argv)
         printf("%s ", input_filename);
 
         ////////////////////////////FILTER///////////////////////////
-        printf("%s-%d ", "MPI", world_size);
+        if (method == 0) printf("MPI-%d_classic ", world_size);
+        else if (method == 1) printf("MPI-%d_OpenMP ", world_size);
+        else if (method == 2) printf("MPI-%d_Cuda ", world_size);
         /* Blur + Sobel filter Timer start */
         gettimeofday(&t1, NULL);
 #endif
 
-        mpi_filter_rank_0(image);
+        mpi_filter_rank_0(image, method);
 
 #if time_eval
         /* Blur + Sobel filter Timer stop */
@@ -504,7 +581,7 @@ int mpi_filter(int argc, char ** argv)
 #endif
     }
     else{
-        mpi_filter_other_rank(world_rank);
+        mpi_filter_other_rank(world_rank, method);
     }
     MPI_Finalize();
     return 0;

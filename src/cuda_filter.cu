@@ -1,8 +1,8 @@
-#include <cuda.h>
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <cuda.h>
 #include <cuda_runtime.h>
 #include <helper_functions.h>
 #include <helper_cuda.h>
@@ -86,7 +86,7 @@ void cuda_sobel_filter_kernel(int* p, int* res, int width, int height){
         if ( val_blue > 50 ) res[i] = 255 ;
         else res[i] = 0 ;
     }
-    else if (j < height && k < height)
+    else if (j < height && k < width)
     {
         res[i] = p[i];
     }
@@ -95,6 +95,151 @@ void cuda_sobel_filter_kernel(int* p, int* res, int width, int height){
 
 extern "C"
 {
+    int cuda_blur_in_while(int* p, int size, int threshold, int width, int height)
+    {
+        cudaSetDevice(0);
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, 0);
+
+        int total_size = width * height * sizeof(int);
+
+        dim3 dimBlock(
+                min(32, width), 
+                min(32, height)
+                );
+        dim3 dimGrid(
+                width / dimBlock.x + 1,
+                height / dimBlock.y + 1
+                );
+#if CUDA_DEBUG
+        printf("\nSize dimBlock : %d x %d \n", dimBlock.x, dimBlock.y);
+        printf("Size dimGrid : %d x %d \n", dimGrid.x, dimGrid.y);
+        printf("Threads needed : %d, Threads had : %d \n", width * height, dimBlock.x*dimBlock.y*dimGrid.x * dimGrid.y);
+#endif
+        /* Define device variables */
+        int * d_p;
+        int * d_res;
+        int * d_end;
+
+        /* Allocation of memory */
+        checkCudaErrors(cudaMalloc( &d_p, total_size));
+        checkCudaErrors(cudaMalloc( &d_res, total_size));
+        checkCudaErrors(cudaMalloc( &d_end, sizeof(int)));
+
+        /* Copy array from CPU to device */
+        checkCudaErrors(cudaMemcpy(d_p, p, total_size, cudaMemcpyHostToDevice));
+
+        /* execute the kernel */
+        int end;
+        end = 1;
+        cudaMemcpy(d_end, &end, sizeof(int), cudaMemcpyHostToDevice);
+        cuda_blur_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, size, threshold, width, height, d_end);
+        cudaMemcpy(&end, d_end, sizeof(int), cudaMemcpyDeviceToHost);
+
+        /* return the result from device to CPU */
+        checkCudaErrors(cudaMemcpy(p, d_res, total_size, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaFree(d_p));
+        checkCudaErrors(cudaFree(d_res));
+        checkCudaErrors(cudaFree(d_end));
+        return end;
+    }
+
+    void cuda_blur_filter_per_image(int* p, int size, int threshold, int width, int height)
+    {
+        cudaSetDevice(0);
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, 0);
+
+        int total_size = width * height * sizeof(int);
+
+        dim3 dimBlock(
+                min(32, width), 
+                min(32, height)
+                );
+        dim3 dimGrid(
+                width / dimBlock.x + 1,
+                height / dimBlock.y + 1
+                );
+#if CUDA_DEBUG
+        printf("\nSize dimBlock : %d x %d \n", dimBlock.x, dimBlock.y);
+        printf("Size dimGrid : %d x %d \n", dimGrid.x, dimGrid.y);
+        printf("Threads needed : %d, Threads had : %d \n", width * height, dimBlock.x*dimBlock.y*dimGrid.x * dimGrid.y);
+#endif
+        /* Define device variables */
+        int * d_p;
+        int * d_res;
+        int * d_end;
+
+        /* Allocation of memory */
+        checkCudaErrors(cudaMalloc( &d_p, total_size));
+        checkCudaErrors(cudaMalloc( &d_res, total_size));
+        checkCudaErrors(cudaMalloc( &d_end, sizeof(int)));
+
+        /* Copy array from CPU to device */
+        checkCudaErrors(cudaMemcpy(d_p, p, total_size, cudaMemcpyHostToDevice));
+
+        /* execute the kernel */
+        int num_iter = 0;
+        int end;
+        do{
+            end = 1;
+            num_iter++;
+            cudaMemcpy(d_end, &end, sizeof(int), cudaMemcpyHostToDevice);
+            cuda_blur_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, size, threshold, width, height, d_end);
+            cudaMemcpy(&end, d_end, sizeof(int), cudaMemcpyDeviceToHost);
+        }while (threshold > 0 && !end);
+#if CUDA_DEBUG
+        printf("\nBlur filtering...Done! %d \n", num_iter);
+#endif
+
+        /* return the result from device to CPU */
+        checkCudaErrors(cudaMemcpy(p, d_res, total_size, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaFree(d_p));
+        checkCudaErrors(cudaFree(d_res));
+        checkCudaErrors(cudaFree(d_end));
+    }
+
+    void cuda_sobel_filter_per_image(int* p, int width, int height){
+        cudaSetDevice(0);
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, 0);
+
+        int total_size = width * height * sizeof(int);
+        //printf("\n %d \n", total_size);
+
+        dim3 dimBlock(
+                min(32, width), 
+                min(32, height)
+                );
+        dim3 dimGrid(
+                width / dimBlock.x + 1,
+                height / dimBlock.y + 1
+                );
+#if CUDA_DEBUG
+        printf("\nSize dimBlock : %d x %d \n", dimBlock.x, dimBlock.y);
+        printf("Size dimGrid : %d x %d \n", dimGrid.x, dimGrid.y);
+        printf("Threads needed : %d, Threads had : %d \n", width * height, dimBlock.x*dimBlock.y*dimGrid.x * dimGrid.y);
+#endif
+        /* Define device variables */
+        int * d_p;
+        int * d_res;
+
+        /* Allocation of memory */
+        checkCudaErrors(cudaMalloc( &d_p, total_size));
+        checkCudaErrors(cudaMalloc( &d_res, total_size));
+
+        /* Copy array from CPU to device */
+        checkCudaErrors(cudaMemcpy(d_p, p, total_size, cudaMemcpyHostToDevice));
+
+        /* execute the kernel */
+        cuda_sobel_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, width, height);
+
+        /* return the result from device to CPU */
+        checkCudaErrors(cudaMemcpy(p, d_res, total_size, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaFree(d_p));
+        checkCudaErrors(cudaFree(d_res));
+    }
+
     void cuda_filter_per_image(int* p, int size, int threshold, int width, int height){
         cudaSetDevice(0);
         cudaDeviceProp deviceProp;
@@ -175,7 +320,9 @@ extern "C"
         for(i=0; i<image->n_images; i++){
             width = image->width[i];
             height = image->height[i];
-            cuda_filter_per_image(p[i], 5, 20, width, height);
+            //cuda_filter_per_image(p[i], 5, 20, width, height);
+            cuda_blur_filter_per_image(p[i], 5,20,width, height);
+            cuda_sobel_filter_per_image(p[i], width, height);
         }
 
 #if time_eval
