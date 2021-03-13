@@ -16,3 +16,6 @@ with method
 3 : MPI
 4 : MPI+Openmp
 5 : MPI+Cuda
+
+
+chaque ligne de multiple_machine_test: name load_time method blur sobel export_time
