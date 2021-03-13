@@ -355,7 +355,7 @@ extern "C"
         duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
         fprintf(stderr,  "SOBEL done in %lf s\n", duration ) ;
-        printf("%lf \n", duration);
+        printf("%lf ", duration);
 #endif
     }
 }

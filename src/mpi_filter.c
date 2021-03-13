@@ -575,7 +575,7 @@ int mpi_filter(int argc, char ** argv, int method)
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
         fprintf(stderr, "GIF loaded from file %s with %d image(s) in %lf s\n",
                 input_filename, image->n_images, duration);
-        printf("%s %lf", input_filename, duration);
+        printf("%s %lf ", input_filename, duration);
 
         ////////////////////////////FILTER///////////////////////////
         if (method == 0) printf("MPI-%d_classic ", world_size);
