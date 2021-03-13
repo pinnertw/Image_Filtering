@@ -63,7 +63,7 @@ main( int argc, char ** argv )
 
         fprintf(stderr,  "GIF loaded from file %s with %d image(s) in %lf s\n", 
                 input_filename, image->n_images, duration ) ;
-        printf("%s ", input_filename);
+        printf("%s %lf ", input_filename, duration);
 #endif
 
         if (method == 0) classic_filter(image);
@@ -85,6 +85,7 @@ main( int argc, char ** argv )
         duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
         fprintf(stderr,  "Export done in %lf s in file %s\n", duration, output_filename ) ;
+        printf("%lf \n", duration);
 #endif
     }
 

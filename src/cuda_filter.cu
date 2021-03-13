@@ -321,8 +321,31 @@ extern "C"
             width = image->width[i];
             height = image->height[i];
             //cuda_filter_per_image(p[i], 5, 20, width, height);
+
+#if time_eval_filters
+    struct timeval t3, t4;
+    double duration2;
+    gettimeofday(&t3, NULL);
+#endif
+
             cuda_blur_filter_per_image(p[i], 5,20,width, height);
+
+#if time_eval_filters
+            gettimeofday(&t4, NULL);
+            duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+            fprintf(stderr,  "Blur filter done in %lf s\n", duration2);
+            printf("%lf ", duration2);
+            gettimeofday(&t3, NULL);
+#endif
+
             cuda_sobel_filter_per_image(p[i], width, height);
+
+#if time_eval_filters
+            gettimeofday(&t4, NULL);
+            duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+            fprintf(stderr,  "Sobel filter done in %lf s\n", duration2) ;
+            printf("%lf ", duration2);
+#endif
         }
 
 #if time_eval

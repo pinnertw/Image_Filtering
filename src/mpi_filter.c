@@ -293,9 +293,31 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
 #if MPI_DEBUG
     fprintf(stderr, "MPI_local image starts processing\n") ;
 #endif
+#if time_eval_filters
+    struct timeval t3, t4;
+    double duration2;
+    gettimeofday(&t3, NULL);
+#endif
+
     // Processing
     mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm, method);
+
+#if time_eval_filters
+    gettimeofday(&t4, NULL);
+    duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    fprintf(stderr,  "Blur filter done in %lf s\n", duration2);
+    printf("%lf ", duration2);
+    gettimeofday(&t3, NULL);
+#endif
+
     mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm, method);
+
+#if time_eval_filters
+    gettimeofday(&t4, NULL);
+    duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    fprintf(stderr,  "Sobel filter done in %lf s\n", duration2) ;
+    printf("%lf ", duration2);
+#endif
 
     // Get image processed from nodes
     if (rest == 0)
@@ -553,7 +575,7 @@ int mpi_filter(int argc, char ** argv, int method)
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
         fprintf(stderr, "GIF loaded from file %s with %d image(s) in %lf s\n",
                 input_filename, image->n_images, duration);
-        printf("%s ", input_filename);
+        printf("%s %lf", input_filename, duration);
 
         ////////////////////////////FILTER///////////////////////////
         if (method == 0) printf("MPI-%d_classic ", world_size);
@@ -570,7 +592,7 @@ int mpi_filter(int argc, char ** argv, int method)
         gettimeofday(&t2, NULL);
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
         fprintf(stderr, "SOBEL done in %lf s\n", duration);
-        printf("%lf \n", duration);
+        printf("%lf ", duration);
 
         ////////////////////////////EXPORT///////////////////////////
         /* EXPORT Timer start */
@@ -584,6 +606,7 @@ int mpi_filter(int argc, char ** argv, int method)
         gettimeofday(&t2, NULL);
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
         fprintf(stderr, "Export done in %lf s in file %s\n", duration, output_filename);
+        printf("%lf \n", duration);
 #endif
     }
     else{

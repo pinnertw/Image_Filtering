@@ -51,6 +51,9 @@ $(OBJ_DIR)/openmp_filter.o : $(SRC_DIR)/openmp_filter.c $(BASIC)
 $(OBJ_DIR)/mpi_filter.o : $(SRC_DIR)/mpi_filter.c $(BASIC)
 	$(MPICC) $(CFLAGS) $(OPENMPFLAGS) -c -o $@ $< $(LDFLAGS)
 
+$(OBJ_DIR)/gif_io.o : $(SRC_DIR)/gif_io.c $(BASIC)
+	$(CC) $(CFLAGS) $(OPENMPFLAGS) -c -o $@ $< $(LDFLAGS)
+
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 

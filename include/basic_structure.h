@@ -4,7 +4,10 @@
 
 // Time flag
 #define time_eval 1
-#define time_eval_filters 0 // Calculate time per filter
+// Calculate time per filter. 
+// Beware that it calculate once for every image in cuda filter
+// so better test with gifs with only one image.
+#define time_eval_filters 1
 
 // Debugs flag
 #define SOBELF_DEBUG 0
