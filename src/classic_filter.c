@@ -205,39 +205,53 @@ classic_sobel_filter( animated_gif * image )
 
 }
 void classic_filter(animated_gif * image){
-    struct timeval t1, t2, t3, t4;
+#if SOBELF_DEBUG
+    fprintf(stderr, "\nUsing classical functions \n");
+#endif
+
+#if time_eval
+    printf("%s ", "classic");
+    struct timeval t1, t2;
     double duration;
     /* FILTER Timer start */
-    fprintf(stderr, "\nUsing classical functions \n");
-    printf("%s ", "classic");
     gettimeofday(&t1, NULL);
+#endif
 
-    /* Apply blur filter with convergence value */
+#if time_eval_filters
+    struct timeval t3, t4;
+    double duration2;
     gettimeofday(&t3, NULL);
+#endif
 
+// Apply blur filter with convergence value
     classic_blur_filter( image, 5, 20 ) ;
 
+#if time_eval_filters
     gettimeofday(&t4, NULL);
-    duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
-    fprintf(stderr,  "Blur filter done in %lf s\n", duration ) ;
-    printf("%lf ", duration);
+    duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    fprintf(stderr,  "Blur filter done in %lf s\n", duration2);
+    printf("%lf ", duration2);
 
-    /* Apply sobel filter on pixels */
     gettimeofday(&t3, NULL);
+#endif
 
+// Apply sobel filter on pixels
     classic_sobel_filter( image ) ;
 
+#if time_eval_filters
     gettimeofday(&t4, NULL);
-    duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
-    fprintf(stderr,  "Sobel filter done in %lf s\n", duration ) ;
-    printf("%lf ", duration);
+    duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    fprintf(stderr,  "Sobel filter done in %lf s\n", duration2) ;
+    printf("%lf ", duration2);
+#endif
 
+#if time_eval
     /* FILTER Timer stop */
     gettimeofday(&t2, NULL);
 
     duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
     fprintf(stderr,  "SOBEL done in %lf s\n", duration ) ;
-    printf("%lf ", duration);
-
+    printf("%lf \n", duration);
+#endif
 }

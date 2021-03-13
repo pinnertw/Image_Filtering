@@ -1,7 +1,14 @@
 #pragma once
 #include "gif_lib.h"
 /* Set this macro to 1 to enable debugging information */
+#define time_eval 1
+#define time_eval_filters 0
 #define SOBELF_DEBUG 0
+#define MPI_DEBUG 0
+#define CUDA_DEBUG 0
+#define OPENMP_DEBUG 0
+#define CLASSIC_DEBUG 0
+
 #define CONV(l,c,nb_c) \
     (l)*(nb_c)+(c)
 

@@ -34,8 +34,6 @@ OBJ= $(OBJ_DIR)/dgif_lib.o \
 	$(OBJ_DIR)/mpi_filter.o \
 	$(OBJ_DIR)/cuda_filter.o
 
-OBJ_MPI = $(OBJ_DIR)/mpi_filter.o
-
 all: $(OBJ_DIR) sobelf
 
 $(OBJ_DIR):
@@ -53,14 +51,8 @@ $(OBJ_DIR)/mpi_filter.o : $(SRC_DIR)/mpi_filter.c
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-sobelf_serial:$(OBJ)
-	$(CC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDFLAGS)
-
-sobelf:$(OBJ_OPENMP) $(OBJ) obj/cuda_filter.o $(OBJ_MPI)
+sobelf: $(OBJ) 
 	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main.c $^ $(LDGPUFLAGS)
-
-sobelf_mpi: $(OBJ) $(OBJ_OPENMP) $(OBJ_MPI) obj/cuda_filter.o
-	$(MPICC) $(CFLAGS) -fopenmp -o $@ src/main_mpi.c $^ $(LDGPUFLAGS)
 
 clean:
 	rm -f sobelf sobelf_serial sobelf_mpi $(OBJ)

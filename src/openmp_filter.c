@@ -218,39 +218,52 @@ void openmp_sobel_filter(animated_gif * image)
 }
 
 void openmp_filter( animated_gif * image){
-    struct timeval t1, t2, t3, t4;
-    double duration;
+#if SOBELF_DEBUG
+    fprintf(stderr, "\nUsing openmp functions\n");
+#endif
 
+#if time_eval
+    printf("%s ", "OpenMP");
+    struct timeval t1, t2;
+    double duration;
     /* FILTER Timer start */
     gettimeofday(&t1, NULL);
-    fprintf(stderr, "\nUsing openmp functions\n");
-    printf("%s ", "OpenMP");
+#endif
+
+#if time_eval_filters
+    struct timeval t3, t4;
+    double duration2;
+    gettimeofday(&t3, NULL);
+#endif
 
 // Apply blur filter
-    gettimeofday(&t3, NULL);
-
     openmp_blur_filter(image, 5, 20);
 
+#if time_eval_filters
     gettimeofday(&t4, NULL);
-    duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
-    fprintf(stderr,  "Blur filter done in %lf s\n", duration ) ;
+    duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    fprintf(stderr,  "Blur filter done in %lf s\n", duration2) ;
     printf("%lf ", duration);
+    gettimeofday(&t3, NULL);
+#endif
 
 // Apply Sobel filter
-    gettimeofday(&t3, NULL);
-
     openmp_sobel_filter(image);
 
+#if time_eval_filters
     gettimeofday(&t4, NULL);
-    duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
-    fprintf(stderr,  "Sobel filter done in %lf s\n", duration ) ;
+    duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    fprintf(stderr,  "Sobel filter done in %lf s\n", duration2 ) ;
     printf("%lf ", duration);
+#endif
 
+#if time_eval
     /* FILTER Timer stop */
     gettimeofday(&t2, NULL);
 
     duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
     fprintf(stderr,  "SOBEL done in %lf s\n", duration ) ;
-    printf("%lf ", duration);
+    printf("%lf \n", duration);
+#endif
 }

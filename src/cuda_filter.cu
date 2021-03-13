@@ -112,9 +112,11 @@ extern "C"
                 width / dimBlock.x + 1,
                 height / dimBlock.y + 1
                 );
+#if CUDA_DEBUG
         printf("\nSize dimBlock : %d x %d \n", dimBlock.x, dimBlock.y);
         printf("Size dimGrid : %d x %d \n", dimGrid.x, dimGrid.y);
         printf("Threads needed : %d, Threads had : %d \n", width * height, dimBlock.x*dimBlock.y*dimGrid.x * dimGrid.y);
+#endif
         /* Define device variables */
         int * d_p;
         int * d_res;
@@ -140,7 +142,9 @@ extern "C"
             cuda_blur_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, size, threshold, width, height, d_end);
             cudaMemcpy(&end, d_end, sizeof(int), cudaMemcpyDeviceToHost);
         }while (threshold > 0 && !end);
+#if CUDA_DEBUG
         printf("\nBlur filtering...Done! %d \n", num_iter);
+#endif
 
         cuda_sobel_filter_kernel<<<dimGrid, dimBlock>>>(d_p, d_res, width, height);
 
@@ -152,13 +156,17 @@ extern "C"
     }
 
     void cuda_filter( animated_gif * image){
+#if SOBELF_DEBUG
+        fprintf(stderr, "\nUsing CUDA functions\n");
+#endif
+
+#if time_eval
+        printf("%s ", "CUDA");
         struct timeval t1, t2;
         double duration;
-
         /* FILTER Timer start */
         gettimeofday(&t1, NULL);
-        fprintf(stderr, "\nUsing cuda functions\n");
-        printf("%s ", "CUDA");
+#endif
 
     // Apply cuda filter
         int i, width, height;
@@ -170,10 +178,14 @@ extern "C"
             cuda_filter_per_image(p[i], 5, 20, width, height);
         }
 
+#if time_eval
         /* FILTER Timer stop */
         gettimeofday(&t2, NULL);
+
         duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+
         fprintf(stderr,  "SOBEL done in %lf s\n", duration ) ;
-        printf("%lf ", duration);
+        printf("%lf \n", duration);
+#endif
     }
 }

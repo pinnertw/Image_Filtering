@@ -7,6 +7,7 @@
 
 #include "gif_lib.h"
 #include "basic_structure.h"
+#define MPI_DEBUG 0
 
 void
 mpi_filter_rank_0_case1(int ** p, int* width_all, int* height_all, int n_images, int world_size, int start_image_index)
@@ -108,7 +109,7 @@ mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height
     }
     while ( threshold > 0 && !end ) ;
 
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
 #endif
     free (new) ;
@@ -154,7 +155,7 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     }
     left_all[0] = 0;
     right_all[world_size-1] = 0;
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "Sending characteristic from local root\n");
 #endif
 
@@ -174,7 +175,7 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     MPI_Datatype column;
     MPI_Type_vector(height, width-1, width_global, MPI_INT, &column);
     MPI_Type_commit(&column);
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "%d process get(s) one more column\n", rest);
 #endif
     // Send !!
@@ -206,7 +207,7 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
         }
     }
 
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "MPI_local image starts processing\n") ;
 #endif
     // Processing
@@ -297,7 +298,7 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     MPI_Scatter(height_all+start_image_index, 1, MPI_INT, &height, 1,  MPI_INT, 0, roots);
     MPI_Scatter(width_all+start_image_index, 1, MPI_INT, &width, 1,  MPI_INT, 0, roots);
 
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "n_images : %d, start_image_index : %d\n", n_images, start_image_index);
 #endif
 
@@ -309,7 +310,7 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     int* p_local;
     p_local = p[0 + start_image_index];
 
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "All images sent, start processing\n");
 #endif
     mpi_filter_case2_local_root(p_local, width, height, image_comm);
@@ -320,9 +321,9 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
         MPI_Recv(p[j], width_all[j] * height_all[j], MPI_INT, i, 2, roots, &sta);
     }
 
-#if SOBELF_DEBUG
+#if MPI_DEBUG
     fprintf(stderr, "All images received, end processing\n");
-    printf("Group %d rank %d !\n", 0, local_rank);
+    fprintf(stderr, "Group %d rank %d !\n", 0, local_rank);
 #endif
 }
 
@@ -364,7 +365,9 @@ mpi_filter_other_rank_case2(int world_rank)
         mpi_filter_case2_local_process(image_comm);
     }
     // Get image processed from roots
-    printf("Group %d rank %d !\n", world_rank % n_images, local_rank);
+#if MPI_DEBUG
+    fprintf(stderr, "Group %d rank %d !\n", world_rank % n_images, local_rank);
+#endif
 }
 
 
@@ -396,7 +399,9 @@ int mpi_filter_rank_0(animated_gif * image)
     /* ############## END ############### */
     dealing_case = 0;
     MPI_Bcast( &dealing_case, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    printf("Primary Done \n");
+#if MPI_DEBUG
+    fprintf(stderr, "Primary Done \n");
+#endif
 }
 
 int mpi_filter_other_rank(world_rank)
@@ -419,7 +424,9 @@ int mpi_filter_other_rank(world_rank)
             mpi_filter_other_rank_case2(world_rank);
         }
     }
-    printf("Local Done \n");
+#if MPI_DEBUG
+    fprintf(stderr, "Local Done \n");
+#endif
 }
 
 int mpi_filter(int argc, char ** argv)
@@ -430,10 +437,12 @@ int mpi_filter(int argc, char ** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
     if (world_rank == 0){
+#if SOBELF_DEBUG
+        fprintf(stderr, "\nUsing MPI functions \n");
+#endif
+
         char * input_filename;
         char * output_filename;
-        struct timeval t1, t2;
-        double duration;
         animated_gif* image;
         if (argc < 3)
         {
@@ -444,41 +453,54 @@ int mpi_filter(int argc, char ** argv)
         output_filename = argv[2];
 
         ////////////////////////////IMPORT///////////////////////////
+#if time_eval
         /* IMPORT Timer start */
+        struct timeval t1, t2;
+        double duration;
         gettimeofday(&t1, NULL);
+#endif
 
         /* Load file and store the pixels in array */
         image = load_pixels(input_filename);
         if (image == NULL) {return 1;}
 
+#if time_eval
         /* IMPORT Timer stop */
         gettimeofday(&t2, NULL);
 
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
         fprintf(stderr, "GIF loaded from file %s with %d image(s) in %lf s\n",
                 input_filename, image->n_images, duration);
+        printf("%s ", input_filename);
 
         ////////////////////////////FILTER///////////////////////////
+        printf("%s ", "MPI");
         /* Blur + Sobel filter Timer start */
         gettimeofday(&t1, NULL);
+#endif
 
         mpi_filter_rank_0(image);
 
+#if time_eval
         /* Blur + Sobel filter Timer stop */
         gettimeofday(&t2, NULL);
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
-        fprintf(stderr, "SOBEL done in %lf s", duration);
+        fprintf(stderr, "SOBEL done in %lf s\n", duration);
+        printf("%lf \n", duration);
 
         ////////////////////////////EXPORT///////////////////////////
         /* EXPORT Timer start */
         gettimeofday(&t1, NULL);
+#endif
 
         if (!store_pixels(output_filename, image)){return 1;}
 
+#if time_eval
         /* EXPORT Timer stop */
         gettimeofday(&t2, NULL);
         duration = (t2.tv_sec-t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
         fprintf(stderr, "Export done in %lf s in file %s\n", duration, output_filename);
+#endif
     }
     else{
         mpi_filter_other_rank(world_rank);

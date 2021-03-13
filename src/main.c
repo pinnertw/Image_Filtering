@@ -19,68 +19,74 @@
 int 
 main( int argc, char ** argv )
 {
-    char * input_filename ; 
-    char * output_filename ;
     int method = 0;
-    animated_gif * image ;
-    struct timeval t1, t2, t3, t4;
-    double duration ;
-
-    /* Check command-line arguments */
-    if ( argc < 3 )
-    {
-        fprintf( stderr, "Usage: %s input.gif output.gif (method) \n", argv[0] ) ;
-        fprintf( stderr, "method : 0 classic, 1 openmp \n") ;
-        return 1 ;
-    }
-
-    input_filename = argv[1] ;
-    output_filename = argv[2] ;
-
-    long arg_method;
+    long arg_method = 0;
     if (argc >= 4) arg_method = strtol(argv[3], NULL, 10);
     if (arg_method < INT_MIN || arg_method > INT_MAX) {
         return 1;
     }
     method = arg_method;
+    if (method == 3) mpi_filter(argc, argv);
+    else
+    {
+        char * input_filename ; 
+        char * output_filename ;
+        animated_gif * image ;
 
-    /* IMPORT Timer start */
-    gettimeofday(&t1, NULL);
+        /* Check command-line arguments */
+        if ( argc < 3 )
+        {
+            fprintf( stderr, "Usage: %s input.gif output.gif (method) \n", argv[0] ) ;
+            fprintf( stderr, "method : 0 classic, 1 openmp \n") ;
+            return 1 ;
+        }
 
-    /* Load file and store the pixels in array */
-    image = load_pixels( input_filename ) ;
-    if ( image == NULL ) { return 1 ; }
+        input_filename = argv[1] ;
+        output_filename = argv[2] ;
 
-    /* IMPORT Timer stop */
-    gettimeofday(&t2, NULL);
+#if time_eval
+        struct timeval t1, t2;
+        double duration ;
+        /* IMPORT Timer start */
+        gettimeofday(&t1, NULL);
+#endif
 
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+        /* Load file and store the pixels in array */
+        image = load_pixels( input_filename ) ;
+        if ( image == NULL ) { return 1 ; }
 
-    fprintf(stderr,  "GIF loaded from file %s with %d image(s) in %lf s\n", 
-            input_filename, image->n_images, duration ) ;
-    printf("%s ", input_filename);
+#if time_eval
+        /* IMPORT Timer stop */
+        gettimeofday(&t2, NULL);
 
-    //printf("\n\n %d, %ld \n\n", method, arg_method);
-    if (method == 0) classic_filter(image);
-    else if (method == 1) openmp_filter(image);
-    else if (method == 2) cuda_filter(image);
-    else if (method == 3) mpi_filter(argc, argv);
+        duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
-    /* EXPORT Timer start */
-    gettimeofday(&t1, NULL);
+        fprintf(stderr,  "GIF loaded from file %s with %d image(s) in %lf s\n", 
+                input_filename, image->n_images, duration ) ;
+        printf("%s ", input_filename);
+#endif
 
-//TODO : variant export time ?
+        if (method == 0) classic_filter(image);
+        else if (method == 1) openmp_filter(image);
+        else if (method == 2) cuda_filter(image);
 
-    /* Store file from array of pixels to GIF file */
-    if ( !store_pixels( output_filename, image ) ) { return 1 ; }
+#if time_eval
+        /* EXPORT Timer start */
+        gettimeofday(&t1, NULL);
+#endif
 
-    /* EXPORT Timer stop */
-    gettimeofday(&t2, NULL);
+        /* Store file from array of pixels to GIF file */
+        if ( !store_pixels( output_filename, image ) ) { return 1 ; }
 
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+#if time_eval
+        /* EXPORT Timer stop */
+        gettimeofday(&t2, NULL);
 
-    fprintf(stderr,  "Export done in %lf s in file %s\n", duration, output_filename ) ;
-    printf("%lf \n", duration);
+        duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+
+        fprintf(stderr,  "Export done in %lf s in file %s\n", duration, output_filename ) ;
+#endif
+    }
 
     return 0 ;
 }
