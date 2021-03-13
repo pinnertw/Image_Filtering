@@ -431,10 +431,11 @@ int mpi_filter_other_rank(world_rank)
 
 int mpi_filter(int argc, char ** argv)
 {
-    int world_rank;
+    int world_rank, world_size;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     if (world_rank == 0){
 #if SOBELF_DEBUG
@@ -474,7 +475,7 @@ int mpi_filter(int argc, char ** argv)
         printf("%s ", input_filename);
 
         ////////////////////////////FILTER///////////////////////////
-        printf("%s ", "MPI");
+        printf("%s-%d ", "MPI", world_size);
         /* Blur + Sobel filter Timer start */
         gettimeofday(&t1, NULL);
 #endif

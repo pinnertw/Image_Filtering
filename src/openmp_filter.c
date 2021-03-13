@@ -223,7 +223,7 @@ void openmp_filter( animated_gif * image){
 #endif
 
 #if time_eval
-    printf("%s ", "OpenMP");
+    printf("%s-%d ", "OpenMP", omp_get_max_threads());
     struct timeval t1, t2;
     double duration;
     /* FILTER Timer start */
