@@ -52,16 +52,75 @@ mpi_filter_other_rank_case1()
     MPI_Send(p_local, height*width, MPI_INT, 0, 1, MPI_COMM_WORLD);
 }
 
-// TODO local image comm.
+void 
+mpi_update_image(int* p, int width, int height, int left, int right, int size_exchange, MPI_Comm image_comm, int rank)
+{
+    // p of size height * (left+width+right)
+    MPI_Request req[4];
+    MPI_Status sta[4];
+
+    // Left/Right column type
+    MPI_Datatype column;
+    MPI_Type_vector(height, size_exchange, left+width+right, MPI_INT, &column);
+    MPI_Type_commit(&column);
+
+    // Get/Send left/right
+    int messages_transferred = 0;
+    if (left != 0) // Send left to left, receive left's right
+    {
+        MPI_Isend(p+left, 1, column, rank-1, 2, image_comm, req+messages_transferred);
+        messages_transferred++;
+        MPI_Irecv(p+left-size_exchange, 1, column, rank-1, 2, image_comm, req+messages_transferred);
+        messages_transferred++;
+    }
+    if (right != 0) // send right to right, receive right's left
+    {
+        MPI_Isend(p+left+width-size_exchange, 1, column, rank+1, 2, image_comm, req+messages_transferred);
+        messages_transferred++;
+        MPI_Irecv(p+left+width, 1, column, rank+1, 2, image_comm, req+messages_transferred);
+        messages_transferred++;
+    }
+
+    MPI_Waitall(messages_transferred, req, sta);
+}
+
 void
 mpi_blur_filter_per_image(int* p, int size, int threshold, int width, int height, int left, int right, MPI_Comm image_comm)
 {
+    int rank;
+    MPI_Comm_rank(image_comm, &rank);
+    int end = 0;
+    int n_iter = 0;
+    int * new;
+    int j, k;
+
+    /* Allocate array of new pixels */
+    int width_total = left+width+right;
+    new = (int *)malloc(width_total*height*sizeof( int )) ;
+
+    /* Perform at least one blur iteration */
+    do
+    {
+        mpi_update_image(p, width, height, left, right, size, image_comm, rank);
+        n_iter++ ;
+        end = classic_blur_in_while(p, new, size, threshold, width_total, height);
+        MPI_Allreduce(&end, &end, 1, MPI_INT, MPI_PROD, image_comm);
+    }
+    while ( threshold > 0 && !end ) ;
+
+#if SOBELF_DEBUG
+    fprintf(stderr, "BLUR: number of iterations for image %d\n", n_iter ) ;
+#endif
+    free (new) ;
 }
 
-// TODO local image comm.
 void
 mpi_sobel_filter_per_image(int* p, int width, int height, int left, int right, MPI_Comm image_comm)
 {
+    int rank;
+    MPI_Comm_rank(image_comm, &rank);
+    mpi_update_image(p, width, height, left, right, 1, image_comm, rank);
+    classic_sobel_filter_per_image(p, left+width+right, height);
 }
 
 void
@@ -95,6 +154,9 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     }
     left_all[0] = 0;
     right_all[world_size-1] = 0;
+#if SOBELF_DEBUG
+    fprintf(stderr, "Sending characteristic from local root\n");
+#endif
 
     // Send these values
     MPI_Bcast( &height, 1, MPI_INT, 0, image_comm);
@@ -112,45 +174,70 @@ mpi_filter_case2_local_root(int* p, int width_global, int height, MPI_Comm image
     MPI_Datatype column;
     MPI_Type_vector(height, width-1, width_global, MPI_INT, &column);
     MPI_Type_commit(&column);
+#if SOBELF_DEBUG
+    fprintf(stderr, "%d process get(s) one more column\n", rest);
+#endif
     // Send !!
-    for (i=1; i<rest; i++){
-        MPI_Send(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm);
+    if (rest == 0)
+    {
+        for (i=1; i<world_size; i++){
+            MPI_Send(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm);
+        }
     }
-    for (i=rest; i<world_size; i++){
-        MPI_Send(p+width_cum_sum[i], 1, column, i, 2, image_comm);
+    else
+    {
+        for (i=1; i<rest; i++){
+            MPI_Send(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm);
+        }
+        for (i=rest; i<world_size; i++){
+            if(rest != 0)
+            {
+            MPI_Send(p+width_cum_sum[i], 1, column, i, 2, image_comm);
+            }
+        }
     }
 
     int* p_local;
     p_local = (int*) malloc(height * (left+width+right) * sizeof(int));
-    for (i=0; i<width; i++){
+    int local_width = left+width+right;
+    for (i=left; i<width+left; i++){
         for (j=0; j<height; j++){
-            p_local[CONV(j,i,width)] = p[CONV(j,i,width_global)];
+            p_local[CONV(j,i,local_width)] = p[CONV(j,i,width_global)];
         }
     }
 
+#if SOBELF_DEBUG
+    fprintf(stderr, "MPI_local image starts processing\n") ;
+#endif
     // Processing
-    //classic_blur_filter_per_image(p_local, 5, 20, width, height);
     mpi_blur_filter_per_image(p_local, 5, 20, width, height, left, right, image_comm);
     mpi_sobel_filter_per_image(p_local, width, height, left, right, image_comm);
-    //classic_sobel_filter_per_image(p_local, width, height);
 
     // Get image processed from nodes
-    for (i=1; i<rest; i++){
-        MPI_Recv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, &sta);
+    if (rest == 0)
+    {
+        for (i=1; i<world_size; i++){
+            MPI_Recv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, &sta);
+        }
     }
-    for (i=rest; i<world_size; i++){
-        MPI_Recv(p+width_cum_sum[i], 1, column, i, 2, image_comm, &sta);
+    else
+    {
+        for (i=1; i<rest; i++){
+            MPI_Recv(p+width_cum_sum[i], 1, column_one_more, i, 2, image_comm, &sta);
+        }
+        for (i=rest; i<world_size; i++){
+            MPI_Recv(p+width_cum_sum[i], 1, column, i, 2, image_comm, &sta);
+        }
     }
-    for (i=0; i<width; i++){
+    for (i=left; i<width+left; i++){
         for (j=0; j<height; j++){
-            p[CONV(j,i,width_global)] = p_local[CONV(j,i,width)];
+            p[CONV(j,i,width_global)] = p_local[CONV(j,i,local_width)];
         }
     }
 
     // Finalize
     MPI_Type_free(&column_one_more);
     MPI_Type_free(&column);
-    printf(" Root height : %d, width : %d, left : %d, right : %d ", height, width, left, right);
 }
 
 
@@ -183,7 +270,6 @@ mpi_filter_case2_local_process(MPI_Comm image_comm)
 
     // Finalize
     MPI_Type_free(&column);
-    printf("Local height : %d, width : %d, left : %d, right : %d ", height, width, left, right);
 }
 
 void
@@ -210,7 +296,11 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     int height, width;
     MPI_Scatter(height_all+start_image_index, 1, MPI_INT, &height, 1,  MPI_INT, 0, roots);
     MPI_Scatter(width_all+start_image_index, 1, MPI_INT, &width, 1,  MPI_INT, 0, roots);
-    printf("n_images : %d, start_image_index : %d\n", n_images, start_image_index);
+
+#if SOBELF_DEBUG
+    fprintf(stderr, "n_images : %d, start_image_index : %d\n", n_images, start_image_index);
+#endif
+
     // Send image to every roots
     for (i=1; i < n_images; i++){
         j = i + start_image_index;
@@ -219,6 +309,9 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
     int* p_local;
     p_local = p[0 + start_image_index];
 
+#if SOBELF_DEBUG
+    fprintf(stderr, "All images sent, start processing\n");
+#endif
     mpi_filter_case2_local_root(p_local, width, height, image_comm);
 
     // Get image processed from roots
@@ -227,7 +320,10 @@ mpi_filter_rank_0_case2(int ** p, int * width_all, int* height_all, int n_images
         MPI_Recv(p[j], width_all[j] * height_all[j], MPI_INT, i, 2, roots, &sta);
     }
 
+#if SOBELF_DEBUG
+    fprintf(stderr, "All images received, end processing\n");
     printf("Group %d rank %d !\n", 0, local_rank);
+#endif
 }
 
 
@@ -302,7 +398,6 @@ int mpi_filter_rank_0(animated_gif * image)
     MPI_Bcast( &dealing_case, 1, MPI_INT, 0, MPI_COMM_WORLD);
     printf("Primary Done \n");
 }
-
 
 int mpi_filter_other_rank(world_rank)
 {

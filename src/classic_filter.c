@@ -6,6 +6,82 @@
 #define CONV(l,c,nb_c) \
     (l)*(nb_c)+(c)
 
+int
+classic_blur_in_while(int* p, int* new, int size, int threshold, int width, int height)
+{
+    int end=1;
+    int j, k;
+    for(j=0; j<height-1; j++)
+    {
+        for(k=0; k<width-1; k++)
+        {
+            new[CONV(j,k,width)]  = p[CONV(j,k,width)];
+        }
+    }
+
+    /* Apply blur on top part of image (10%) */
+    for(j=size; j<height/10-size; j++)
+    {
+        for(k=size; k<width-size; k++)
+        {
+            int stencil_j, stencil_k ;
+            int t_r = 0 ;
+            for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
+            {
+                for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
+                {
+                    t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
+                }
+            }
+            new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
+        }
+    }
+
+    /* Copy the middle part of the image */
+    for(j=height/10-size; j<height*0.9+size; j++)
+    {
+        for(k=size; k<width-size; k++)
+        {
+            new[CONV(j,k,width)]  = p[CONV(j,k,width)]  ; 
+        }
+    }
+
+    /* Apply blur on the bottom part of the image (10%) */
+    for(j=height*0.9+size; j<height-size; j++)
+    {
+        for(k=size; k<width-size; k++)
+        {
+            int stencil_j, stencil_k ;
+            int t_r = 0 ;
+
+            for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
+            {
+                for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
+                {
+                    t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
+                }
+            }
+
+            new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
+        }
+    }
+
+    for(j=1; j<height-1; j++)
+    {
+        for(k=1; k<width-1; k++)
+        {
+            float diff_r ;
+            diff_r = (new[CONV(j  ,k  ,width)]  - p[CONV(j  ,k  ,width)] ) ;
+
+            if ( diff_r > threshold || -diff_r > threshold 
+               ) {
+                end = 0 ;
+            }
+            p[CONV(j  ,k  ,width)]  = new[CONV(j  ,k  ,width)]  ;
+        }
+    }
+    return end;
+}
 void
 classic_blur_filter_per_image(int * p, int size, int threshold, int width, int height){
     int end = 0;
@@ -17,84 +93,11 @@ classic_blur_filter_per_image(int * p, int size, int threshold, int width, int h
     /* Allocate array of new pixels */
     new = (int *)malloc(width * height * sizeof( int ) ) ;
 
-
     /* Perform at least one blur iteration */
     do
     {
-        end = 1 ;
         n_iter++ ;
-
-
-        for(j=0; j<height-1; j++)
-        {
-            for(k=0; k<width-1; k++)
-            {
-                new[CONV(j,k,width)]  = p[CONV(j,k,width)]  ;
-            }
-        }
-
-        /* Apply blur on top part of image (10%) */
-        for(j=size; j<height/10-size; j++)
-        {
-            for(k=size; k<width-size; k++)
-            {
-                int stencil_j, stencil_k ;
-                int t_r = 0 ;
-                for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
-                {
-                    for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
-                    {
-                        t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
-                    }
-                }
-                new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
-            }
-        }
-
-        /* Copy the middle part of the image */
-        for(j=height/10-size; j<height*0.9+size; j++)
-        {
-            for(k=size; k<width-size; k++)
-            {
-                new[CONV(j,k,width)]  = p[CONV(j,k,width)]  ; 
-            }
-        }
-
-        /* Apply blur on the bottom part of the image (10%) */
-        for(j=height*0.9+size; j<height-size; j++)
-        {
-            for(k=size; k<width-size; k++)
-            {
-                int stencil_j, stencil_k ;
-                int t_r = 0 ;
-
-                for ( stencil_j = -size ; stencil_j <= size ; stencil_j++ )
-                {
-                    for ( stencil_k = -size ; stencil_k <= size ; stencil_k++ )
-                    {
-                        t_r += p[CONV(j+stencil_j,k+stencil_k,width)]  ;
-                    }
-                }
-
-                new[CONV(j,k,width)]  = t_r / ( (2*size+1)*(2*size+1) ) ;
-            }
-        }
-
-        for(j=1; j<height-1; j++)
-        {
-            for(k=1; k<width-1; k++)
-            {
-                float diff_r ;
-                diff_r = (new[CONV(j  ,k  ,width)]  - p[CONV(j  ,k  ,width)] ) ;
-
-                if ( diff_r > threshold || -diff_r > threshold 
-                   ) {
-                    end = 0 ;
-                }
-                p[CONV(j  ,k  ,width)]  = new[CONV(j  ,k  ,width)]  ;
-            }
-        }
-
+        end = classic_blur_in_while(p, new, size, threshold, width, height);
     }
     while ( threshold > 0 && !end ) ;
 
