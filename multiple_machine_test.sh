@@ -19,7 +19,7 @@ for i in $INPUT_DIR/*gif ; do
     salloc -n 1 mpirun ./sobelf $i $DEST 0
 
     # OpenMP, from 1 to 6 threads
-    for j in {1..6}
+    for j in {1..3}
     do
         OMP_NUM_THREADS=$j ./sobelf $i $DEST 1
     done
@@ -29,19 +29,19 @@ for i in $INPUT_DIR/*gif ; do
     salloc -n 1 ./sobelf $i $DEST 2
 
     # MPI, from 1 node to 6 nodes
-    for j in {1..6}
+    for j in {1..3}
     do
         salloc -N $j -n $j mpirun ./sobelf $i $DEST 3
     done
 
     # MPI+OMP, from 1 node to 6 nodes
-    for j in {1..6}
+    for j in {1..3}
     do
-        salloc -N $j -n $j mpirun ./sobelf $i $DEST 4
+        OMP_NUM_THREADS=6 salloc -N $j -n $j mpirun ./sobelf $i $DEST 4
     done
 
     # MPI+Cuda, from 1 node to 6 nodes
-    for j in {1..6}
+    for j in {1..3}
     do
         salloc -N $j -n $j mpirun ./sobelf $i $DEST 5
     done

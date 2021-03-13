@@ -37,7 +37,7 @@ for i in $INPUT_DIR/*gif ; do
     # MPI+OMP, from 1 node to 6 nodes
     for j in {1..6}
     do
-        salloc -N 1 -n $j mpirun ./sobelf $i $DEST 4
+        OMP_NUM_THREADS=2 salloc -N 1 -n $j mpirun ./sobelf $i $DEST 4
     done
 
     # MPI+Cuda, from 1 node to 6 nodes
