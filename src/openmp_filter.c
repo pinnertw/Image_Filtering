@@ -178,8 +178,13 @@ void openmp_blur_filter(animated_gif *image, int size, int threshold){
 
     /* Get the pixels of all images */
     p = image->p ;
+    
+    int nb_threads;
+#pragma omp parallel //just to get the number of threads
+    {
+        nb_threads=omp_get_num_threads();
+    }
 
-    int nb_threads = omp_get_max_threads();
     int cut_part = image->n_images - image->n_images % nb_threads;
     //printf("\n %d %d %d \n", nb_threads, cut_part, image->n_images % nb_threads);
 
