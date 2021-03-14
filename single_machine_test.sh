@@ -19,7 +19,7 @@ for i in $INPUT_DIR/*gif ; do
     # OpenMP, from 1 to 6 threads
     for j in {1..6}
     do
-        OMP_NUM_THREADS=$j ./sobelf $i $DEST 1
+        OMP_NUM_THREADS=$j salloc -n 1 mpirun ./sobelf $i $DEST 1
     done
     export OMP_NUM_THREADS=1
 
