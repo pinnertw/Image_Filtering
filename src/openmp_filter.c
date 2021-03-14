@@ -206,7 +206,12 @@ void openmp_sobel_filter(animated_gif * image)
     int width, height;
     int ** p;
     p = image->p;
-    int nb_threads = omp_get_max_threads();
+    int nb_threads;
+#pragma omp parallel //just to get the number of threads
+    {
+        nb_threads=omp_get_num_threads();
+    }
+    
     int cut_part = image->n_images - image->n_images % nb_threads;
 #pragma omp parallel for private(i, j, k, width, height)
     for ( i = 0 ; i < cut_part ; i++ )
