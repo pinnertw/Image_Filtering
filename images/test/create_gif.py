@@ -1,14 +1,18 @@
 from PIL import Image, ImageDraw
 import numpy as np
+import sys
 np.random.seed(0)
 
-for height in range(200, 5000, 500):
-    images = []
-    width = 200
-    center = width // 2
-    color_1 = (0, 0, 0)
-    color_2 = (255, 255, 255)
+if (len(sys.argv) < 3):
+    print >> sys.stderr, "ERROR. Usage : XXX.sh height_min step"
+    exit(1)
+height_min = int(sys.argv[1])
+step = int(sys.argv[2])
+width = 200
+print >> sys.stderr, "Creating 10 gif with height = {} to {}".format(height_min, height_min+10*step)
+color_1 = (255, 255, 255)
 
+for height in range(height_min, height_min + 10 * step + 1, step):
     im = Image.new('RGB', (width, height), color_1)
     for i in range(width):
         for j in range(height):

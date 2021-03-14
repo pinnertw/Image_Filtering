@@ -249,7 +249,7 @@ void openmp_filter( animated_gif * image){
     gettimeofday(&t4, NULL);
     duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     fprintf(stderr,  "Blur filter done in %lf s\n", duration2) ;
-    printf("%lf ", duration);
+    printf("%lf ", duration2);
     gettimeofday(&t3, NULL);
 #endif
 
@@ -260,7 +260,7 @@ void openmp_filter( animated_gif * image){
     gettimeofday(&t4, NULL);
     duration2 = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
     fprintf(stderr,  "Sobel filter done in %lf s\n", duration2 ) ;
-    printf("%lf ", duration);
+    printf("%lf ", duration2);
 #endif
 
 #if time_eval

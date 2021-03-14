@@ -1,12 +1,10 @@
 #!/bin/bash
 
-make
-cd images/test
-echo "Creating testing gif..."
-python ./create_gif.py
-cd ../..
-echo "Done!"
 
+./dealing_input.sh $1 $2
+if [ $? -eq 1 ]; then
+    exit 1
+fi
 INPUT_DIR=images/test
 OUTPUT_DIR=images/test_processed
 mkdir $OUTPUT_DIR 2>/dev/null
@@ -46,3 +44,4 @@ for i in $INPUT_DIR/*gif ; do
         salloc -N $j -n $j mpirun ./sobelf $i $DEST 5
     done
 done
+rm -f $INPUT_DIR/*.gif

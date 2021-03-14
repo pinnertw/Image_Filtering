@@ -1,19 +1,17 @@
 #!/bin/bash
 
-make
-cd images/test
-echo "Creating testing gif..."
-python ./create_gif.py
-cd ../..
-echo "Done!"
 
+./dealing_input.sh $1 $2
+if [ $? -eq 1 ]; then
+    exit 1
+fi
 INPUT_DIR=images/test
 OUTPUT_DIR=images/test_processed
 mkdir $OUTPUT_DIR 2>/dev/null
 
 for i in $INPUT_DIR/*gif ; do
     DEST=$OUTPUT_DIR/`basename $i .gif`-sobel.gif
-    #echo "Running test on $i -> $DEST"
+    echo "Running test on $i -> $DEST" >> /dev/stderr
 
     # Sequentiel
     salloc -n 1 mpirun ./sobelf $i $DEST 0
@@ -37,7 +35,7 @@ for i in $INPUT_DIR/*gif ; do
     # MPI+OMP, from 1 node to 6 nodes
     for j in {1..6}
     do
-        OMP_NUM_THREADS=2 salloc -N 1 -n $j mpirun ./sobelf $i $DEST 4
+        OMP_NUM_THREADS=6 salloc -N 1 -n $j mpirun ./sobelf $i $DEST 4
     done
 
     # MPI+Cuda, from 1 node to 6 nodes
@@ -46,3 +44,4 @@ for i in $INPUT_DIR/*gif ; do
         salloc -N 1 -n $j mpirun ./sobelf $i $DEST 5
     done
 done
+rm -f $INPUT_DIR/*.gif
