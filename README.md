@@ -16,3 +16,8 @@ with method
 3 : MPI
 4 : MPI+Openmp
 5 : MPI+Cuda
+
+
+each line of multiple_machine_test is in the form: name load_time method blur sobel (blur+sobel) export_time
+
+images/test: randomly generated animated gifs with pictures of fixed width and different heights
