@@ -1,7 +1,7 @@
 # Image_Filtering
 
 Install :
-make (Remember to set up cuda/mpi variables)
+make (Remember to set up cuda/mpi variables by running "source set_env.sh")
 
 For testing :
 ./multiple_machine_test > output
@@ -20,4 +20,4 @@ with method
 
 each line of multiple_machine_test is in the form: name load_time method blur sobel (blur+sobel) export_time
 
-images/test: randomly generated animated gifs with pictures of fixed width and different heights
+images/test: randomly generated animated gifs with **one** picture of fixed width and different heights
