@@ -24,5 +24,5 @@ images/test: randomly generated animated gifs with **one** picture of fixed widt
 
 MPI_filter: 
 
-- if nb_process<n_images, then process the first images by packs of nb_process images, 1 process per image
-- then, process the remaining images with nb_process images
+- Step 1 (repeat while nb_process<nb remaining images): process the first nb_process images by assigning 1 process per image; update nb remaining images <- nb remaining images-nb_proocess
+- Step 2 (directly step 2 if nb_process>=nb_images): process the remaining images with all processes (not necessarily 1 process per image this time) 
