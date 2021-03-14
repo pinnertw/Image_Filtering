@@ -21,3 +21,8 @@ with method
 each line of multiple_machine_test is in the form: name load_time method blur sobel (blur+sobel) export_time
 
 images/test: randomly generated animated gifs with **one** picture of fixed width and different heights
+
+MPI_filter: 
+
+- if nb_process<n_images, then process the first images by packs of nb_process images, 1 process per image
+- then, process the remaining images with nb_process images
