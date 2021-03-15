@@ -26,7 +26,8 @@ main( int argc, char ** argv )
         return 1;
     }
     method = arg_method;
-    if (method >= 3) mpi_filter(argc, argv, method - 3);
+    if (method == 6) merge_filter(argc, argv);
+    else if (method >= 3) mpi_filter(argc, argv, method - 3);
     else
     {
         char * input_filename ; 
