@@ -22,3 +22,4 @@ each line of multiple_machine_test is in the form: name load_time method blur so
 
 images/test: randomly generated animated gifs with **one** picture of fixed width and different heights
 
+Case1 and case2 in mpi_filter.c correspond to Step 1 and step 2 in the report.
