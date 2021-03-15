@@ -1,7 +1,7 @@
 #!/bin/bash
 
 make >> /dev/stderr
-cd images/test_single_image
+cd ../images/test_single_image
 echo "Creating testing gif..." >> /dev/stderr
 python ./create_gif.py $1 $2
 if [ $? -eq 1 ]; then
