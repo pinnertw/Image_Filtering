@@ -1,7 +1,7 @@
 #!/bin/bash
 
 make >> /dev/stderr
-cd images/test_multiple_image
+cd ../images/test_multiple_image
 echo "Creating testing gif..." >> /dev/stderr
 python ./create_gif.py
 if [ $? -eq 1 ]; then
@@ -9,7 +9,7 @@ if [ $? -eq 1 ]; then
 fi
 cd ../..
 echo "Done!" >> /dev/stderr
-INPUT_DIR=images/test_single_image
+INPUT_DIR=images/test_multiple_image
 OUTPUT_DIR=images/test_processed
 mkdir $OUTPUT_DIR 2>/dev/null
 
