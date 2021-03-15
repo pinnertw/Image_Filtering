@@ -6,6 +6,8 @@ make (Remember to set up cuda/mpi variables by running "source set_env.sh")
 For testing :
 ./multiple_machine_test > output
 ./single_machine_test > output
+or ./single_machine_test.sh 200 100 (first parameter: height_min ; second parameter: step)
+or ./single_machine_multiple_images.sh
 
 For the usage of the program :
 ./sobelf input.gif output.gif method
