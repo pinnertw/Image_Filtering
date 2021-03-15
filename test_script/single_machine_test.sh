@@ -1,11 +1,15 @@
 #!/bin/bash
 
-
-./dealing_input.sh $1 $2
+make >> /dev/stderr
+cd images/test_single_image
+echo "Creating testing gif..." >> /dev/stderr
+python ./create_gif.py $1 $2
 if [ $? -eq 1 ]; then
     exit 1
 fi
-INPUT_DIR=images/test
+cd ../..
+echo "Done!" >> /dev/stderr
+INPUT_DIR=images/test_single_image
 OUTPUT_DIR=images/test_processed
 mkdir $OUTPUT_DIR 2>/dev/null
 
@@ -19,7 +23,7 @@ for i in $INPUT_DIR/*gif ; do
     # OpenMP, from 1 to 6 threads
     for j in {1..6}
     do
-        OMP_NUM_THREADS=$j salloc -n 1 mpirun ./sobelf $i $DEST 1
+        OMP_NUM_THREADS=$j ./sobelf $i $DEST 1
     done
     export OMP_NUM_THREADS=1
 

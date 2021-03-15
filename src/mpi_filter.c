@@ -181,7 +181,7 @@ mpi_sobel_filter_per_image(int* p, int width, int height, int left, int right, M
 {
     int rank;
     MPI_Comm_rank(image_comm, &rank);
-    //mpi_update_image(p, width, height, left, right, 1, image_comm, rank);
+    mpi_update_image(p, width, height, left, right, 1, image_comm, rank);
     if (method == 0)
     {
 #if MPI_DEBUG
