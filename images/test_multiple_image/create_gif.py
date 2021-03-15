@@ -24,4 +24,4 @@ for l in range(num):
         for j in range(height):
             im.putpixel((i,j), (rand[l][i][j][0], rand[l][i][j][1], rand[l][i][j][2]))
     images.append(im)
-    images[0].save('./{}x{}x{}.gif'.format(num, width, height), save_all=True, append_images=images[1:], optimize=False, duration=100, loop=0)
+images[0].save('./{}x{}x{}.gif'.format(num, width, height), save_all=True, append_images=images[1:], optimize=False, duration=100, loop=0)
