@@ -99,6 +99,7 @@ mpi_filter_other_rank_case1(int method)
 void 
 mpi_update_image(int* p, int width, int height, int left, int right, int size_exchange, MPI_Comm image_comm, int rank)
 {
+    if (size_exchange > width) return exit(1);
     // p of size height * (left+width+right)
     MPI_Request req[4];
     MPI_Status sta[4];
@@ -585,8 +586,21 @@ int mpi_filter(int argc, char ** argv, int method)
         gettimeofday(&t1, NULL);
 #endif
 
+#if time_eval_both
+        struct timeval t3, t4;
+        double duration2;
+        gettimeofday(&t3, NULL);
+#endif
+
         mpi_filter_rank_0(image, method);
 
+#if time_eval_both
+        /* Blur + Sobel filter Timer stop */
+        gettimeofday(&t4, NULL);
+        duration2 = (t4.tv_sec-t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+        fprintf(stderr, "SOBEL done in %lf s\n", duration2);
+        printf("%lf \n", duration2);
+#endif
 #if time_eval
         /* Blur + Sobel filter Timer stop */
         gettimeofday(&t2, NULL);

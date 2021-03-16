@@ -19,8 +19,8 @@
 int 
 main( int argc, char ** argv )
 {
-    int method = 0;
-    long arg_method = 0;
+    int method;
+    long arg_method = 6;
     if (argc >= 4) arg_method = strtol(argv[3], NULL, 10);
     if (arg_method < INT_MIN || arg_method > INT_MAX) {
         return 1;

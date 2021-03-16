@@ -209,7 +209,7 @@ void classic_filter(animated_gif * image){
     fprintf(stderr, "\nUsing classical functions \n");
 #endif
 
-#if time_eval
+#if time_eval_both
     printf("%s ", "classic");
     struct timeval t1, t2;
     double duration;
@@ -245,13 +245,13 @@ void classic_filter(animated_gif * image){
     printf("%lf ", duration2);
 #endif
 
-#if time_eval
+#if time_eval_both
     /* FILTER Timer stop */
     gettimeofday(&t2, NULL);
 
     duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
     fprintf(stderr,  "SOBEL done in %lf s\n", duration ) ;
-    printf("%lf ", duration);
+    printf("%lf \n", duration);
 #endif
 }
