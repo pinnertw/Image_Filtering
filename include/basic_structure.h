@@ -9,6 +9,9 @@
 // so better test with gifs with only one image.
 #define time_eval_filters 0
 
+// Never use this flag with others (time_eval and time_eval_filters)
+#define time_eval_both 1
+
 // Debugs flag
 #define SOBELF_DEBUG 0
 #define MPI_DEBUG 0
