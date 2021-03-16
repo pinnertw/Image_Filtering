@@ -12,6 +12,14 @@ echo "1.gif : 10x500x500"
 echo "Campusplan : 1x10000x7000"
 echo "Mandelbrot : 20x1200x1200"
 
+echo "1 machine 1 process, Sequentiel"
+time {
+    for i in $INPUT_DIR/*gif ; do
+        DEST=$OUTPUT_DIR/`basename $i .gif`.gif
+        echo -n "$i "
+        ./sobelf $i $DEST 0 2> /dev/null
+    done
+}
 echo "3 machine 18 process, MPI"
 time {
     for i in $INPUT_DIR/*gif ; do
@@ -36,5 +44,14 @@ time {
         DEST=$OUTPUT_DIR/`basename $i .gif`.gif
         echo -n "$i "
         ./sobelf $i $DEST 1 2> /dev/null
+    done
+}
+
+echo "1 machine 1 process 6 threads , Merge"
+time {
+    for i in $INPUT_DIR/*gif ; do
+        DEST=$OUTPUT_DIR/`basename $i .gif`.gif
+        echo -n "$i "
+        salloc -N 1 -n 1 mpirun ./sobelf $i $DEST 6 2> /dev/null
     done
 }

@@ -643,7 +643,7 @@ int merge_filter(int argc, char ** argv)
 #if time_eval_both
             gettimeofday(&t4, NULL);
             duration2 = (t4.tv_sec - t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
-            printf("%lf", duration2);
+            printf("%lf ", duration2);
 #endif
 
 #if time_eval
