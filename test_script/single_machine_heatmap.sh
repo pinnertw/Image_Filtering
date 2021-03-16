@@ -2,7 +2,7 @@
 
 
 make >> /dev/stderr
-cd ../images/test_heatmap
+cd images/test_heatmap
 echo "Creating testing gif..." >> /dev/stderr
 #python ./create_heatmap_gif.py
 cd ../..
