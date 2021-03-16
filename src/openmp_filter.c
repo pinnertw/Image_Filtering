@@ -13,18 +13,18 @@ int openmp_blur_in_while(int* p, int* new, int size, int threshold, int width, i
     int end1 = height/10 - size;
     int end2 = height*0.9 + size;
 #pragma omp parallel for private (j, k)
-    for (j=0; j<height-1; j++)
+    for(k=0; k<width-1; k++)
     {
-        for(k=0; k<width-1; k++)
+        for (j=0; j<height-1; j++)
         {
             new[CONV(j,k,width)] = p[CONV(j,k,width)];
         }
     }
 /* Apply blur on top part of image (10%) */
 #pragma omp parallel for private(j, k)
-    for(j=size; j<end1; j++)
+    for(k=size; k<width-size; k++)
     {
-        for(k=size; k<width-size; k++)
+        for(j=size; j<end1; j++)
         {
             int stencil_j, stencil_k ;
             int t_r = 0 ;
@@ -43,9 +43,9 @@ int openmp_blur_in_while(int* p, int* new, int size, int threshold, int width, i
 
 /* Copy the middle part of the image */
 #pragma omp parallel for private(j, k)
-    for(j=end1; j<end2; j++)
+    for(k=size; k<width-size; k++)
     {
-        for(k=size; k<width-size; k++)
+        for(j=end1; j<end2; j++)
         {
             new[CONV(j,k,width)] = p[CONV(j,k,width)] ; 
         }
@@ -53,9 +53,9 @@ int openmp_blur_in_while(int* p, int* new, int size, int threshold, int width, i
 
 /* Apply blur on the bottom part of the image (10%) */
 #pragma omp parallel for private(j, k)
-    for(j=end2; j<height-size; j++)
+    for(k=size; k<width-size; k++)
     {
-        for(k=size; k<width-size; k++)
+        for(j=end2; j<height-size; j++)
         {
             int stencil_j, stencil_k ;
             int t_r = 0 ;
@@ -73,9 +73,9 @@ int openmp_blur_in_while(int* p, int* new, int size, int threshold, int width, i
     }
 
 #pragma omp parallel for private(j, k) reduction(*: end)
-    for(j=1; j<height-1; j++)
+    for(k=1; k<width-1; k++)
     {
-        for(k=1; k<width-1; k++)
+        for(j=1; j<height-1; j++)
         {
             float diff_r ;
 
